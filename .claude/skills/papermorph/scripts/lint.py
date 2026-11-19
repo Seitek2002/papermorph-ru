@@ -419,6 +419,9 @@ def main_checkout(root):
 
 
 def main():
+    # A message may quote the narration (Cyrillic, Arabic): a Windows console's code page must not stop the run on it
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('book', type=Path, help='the book folder in site/')
     ap.add_argument('chapters', nargs='*', help='chNN (default: all)')
