@@ -36,6 +36,14 @@ check("Arabic captions split at ؟", [text for _, text in tts.caption_cues(clean
 check("Arabic caption starts", [t for t, _ in tts.caption_cues(clean, words)], [0.0, 3.0, 5.6])
 check("Arabic marks land on their words", tts.mark_times(clean, marks, words), {"q": 3.8, "a": 6.1})
 
+# Russian: Latin point names respelled for the voice ({{C|цэ}}), shown as letters in the captions.
+clean, marks, shown = tts.split_marks("Угол {{C|цэ}} прямой. [[h]]Это гипотенуза {{AB|а бэ}}.")
+check("Russian: the voice reads the Russian letter names", clean, "Угол цэ прямой. Это гипотенуза а бэ.")
+words = words_at(clean, [0.0, 0.4, 0.7, 1.4, 1.7, 2.4, 2.6])
+check("Russian captions show the Latin letters",
+      [text for _, text in tts.respell(tts.caption_cues(clean, words), shown)], ["Угол C прямой.", "Это гипотенуза AB."])
+check("Russian marks land on their words", tts.mark_times(clean, marks, words), {"h": 1.4})
+
 # English stays as it was.
 clean, marks, _ = tts.split_marks("One idea. Is it [[w]]true? Yes.")
 words = words_at(clean, [0.0, 0.4, 1.0, 1.2, 1.4, 2.0])
