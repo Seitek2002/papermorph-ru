@@ -55,6 +55,6 @@ and load `<script src="../lib/mathjax.js"></script>` in every chapter, right aft
 
 ## Traps
 
-- `M()` italicises 1–2 letter lowercase runs (variables) and runs of capitals, but keeps common short English words upright (by, my, an, if, in, is, of, or, …; capitalised: By, If, In, …). In maths write `b​y`, `m​y`, `a​n`, `B​y` to keep them italic. Units inside `M()` turn italic too: write them as words in `T()` text ("meters"). Never put an English sentence in `M()`.
+- `M()` italicises 1–2 letter lowercase runs (variables) and runs of capitals, but keeps common short English words upright (by, my, an, if, in, is, of, or, …; capitalised: By, If, In, …). On a Russian page (`<html lang="ru">`) the function names `tg`, `lg` and `ln` stay upright too, as Russian school books set them (`ctg`, `sin`, `cos` are longer than two letters and upright everywhere). In maths write `b​y`, `m​y`, `a​n`, `B​y` to keep them italic. Units inside `M()` turn italic too: write them as words in `T()` text ("meters"). Never put an English sentence in `M()`.
 - In a JS string, double each TeX backslash (`'\\frac{a}{b}'`) or use `` String.raw`\frac{a}{b}` ``: `'\text'` is a tab followed by "ext".
 - Write a formula wholly in TeX, an `eqLine` sign included (`sym: TX('\\le')`): TeX glyphs are smaller and lighter than `M()` text.

@@ -456,7 +456,9 @@ function syncLinks() {
 }
 const ctx2d = document.createElement('canvas').getContext('2d');
 function textW(str, size, italic = false) { ctx2d.font = `${italic ? 'italic ' : ''}${size}px ${MATH}`; return ctx2d.measureText(str).width; }
-const VAR = /(?<![A-Za-z°])(?:(?!(?:of|in|is|to|or|at|on|by|as|an|if|it|be|no|so|up|we|my)(?![A-Za-z]))[a-z]{1,2}|(?!(?:If|In|It|Is|On|At|No|So|Or|An|As|To|By|Up)(?![A-Za-z]))[a-z]?[A-Z]{1,3}[a-z]?)(?![A-Za-z])/g;   // capitals: A, PV, nRT   // short lowercase runs are variables (a, x, ab), except short English words
+// Two-letter function names a language writes upright, kept out of the variables below (sin, cos, ctg are longer).
+const UPRIGHT_SHORT = { ru: ['tg', 'lg', 'ln'] }[LANGUAGE] || [];
+const VAR = new RegExp(String.raw`(?<![A-Za-z°])(?:(?!(?:${['of', 'in', 'is', 'to', 'or', 'at', 'on', 'by', 'as', 'an', 'if', 'it', 'be', 'no', 'so', 'up', 'we', 'my', ...UPRIGHT_SHORT].join('|')})(?![A-Za-z]))[a-z]{1,2}|(?!(?:If|In|It|Is|On|At|No|So|Or|An|As|To|By|Up)(?![A-Za-z]))[a-z]?[A-Z]{1,3}[a-z]?)(?![A-Za-z])`, 'g');   // capitals: A, PV, nRT   // short lowercase runs are variables (a, x, ab), except short English words
 const F = (n, d) => ({ f: [String(n), String(d)] });   // fraction
 const R = (x, i) => ({ r: x && x.f ? x : String(x), i: i && String(i) });   // root of a number or of F(n, d); i = index, e.g. 3 for a cube root
 const E = x => ({ sup: String(x) });                    // exponent, raised after the part before it
