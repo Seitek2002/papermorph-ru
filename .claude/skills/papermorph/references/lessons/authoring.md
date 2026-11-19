@@ -15,6 +15,8 @@ Chapters have run 5–18 minutes with 5–40 second beats; a long chapter can ho
 
 Beat ids are shared by the page (`BEATS`) and the narration file; a beat with `ask` waits for the answers before moving on ([questions.md](questions.md)).
 
+A book made only for video (its chapters go out as `export.py` MP4s, not as pages to read) has no question beats: no `q…`, `final…` or `finish`. The export leaves questions out anyway, so a lesson that keeps them ends its video on a card pointing to an interactive lesson the viewer does not have, right after a wrap that sends them to practise. The wrap closes the chapter in words instead ("That's the end of chapter one."), and the video ends on its last frame, as a film's does; the page stops on the same frame and counts the chapter as done there. The question is asked at intake ([intake.md](intake.md#2-what-this-book-is)) and the answer goes in `style.json` (`pacing`).
+
 ## Beats
 
 List the beats before writing code. For each lesson beat decide what the eye watches and what changes; why that change is true (the animation is the argument); which words trigger which actions (the `[[marks]]`); what text appears, beside the thing it names; and what carries over from the previous beat. Then storyboard the key moments ([diagrams.md](diagrams.md), [scenes.md](scenes.md)).
