@@ -99,7 +99,7 @@ The player is the same in every tier; a reader drives it with these keys and the
 | Space | play and pause; once the chapter has ended, replay |
 | ← / → | previous or next beat (Shift+← / → during a question) |
 | Home | restart |
-| C | captions on or off ([core/sound.md](sound.md#captions-and-other-languages)); a question's narration is captioned too, above its band or beside its corner card |
+| C | captions on or off ([core/sound.md](sound.md#captions-and-other-languages)); a question's narration is captioned too, above its band or beside its corner card. They start off, or on in a book whose `lib/book.css` sets `--captions: on`; the reader's own choice is remembered |
 | < / > | speed, 0.75–1.5×, remembered (the volume is remembered too, except muted) |
 | F | full screen |
 | ? | help: it lists the question keys only in a chapter with questions |

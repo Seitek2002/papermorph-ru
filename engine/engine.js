@@ -1994,7 +1994,9 @@ function placeCaption(asking) {
   Object.assign(s, { bottom: bottom && bottom + 'px', left: left && left + 'px', maxWidth: width && width + 'px' });
 }
 let capText = '';
-try { captions = localStorage.getItem('captions') === '1'; } catch {}
+// The reader's own choice wins; until they make one, captions are off unless the book's lib/book.css sets --captions: on.
+captions = bookSetting('--captions') === 'on';
+try { const saved = localStorage.getItem('captions'); if (saved !== null) captions = saved === '1'; } catch {}
 function setCaptions(on, save = true) {
   captions = on;
   $('bCC').setAttribute('aria-pressed', String(on));
