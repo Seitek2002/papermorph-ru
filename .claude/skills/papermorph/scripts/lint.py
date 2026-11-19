@@ -32,7 +32,10 @@ Warnings: a top-level name of the page that is one of the engine's sound propert
   and clip as literals (word: 'bird', clip: 'q-bird'; an ask list built with .map does not), whose clips were not
   checked; a beat's m('name') not among that beat's own marks (beats built by shared helpers can mislead this);
   a mark in timings.js that the narration lacks (added by hand: the next tts.py or eleven.py run drops it, so a
-  page-only time belongs in the page); no beats recognised in a chapter; no narration file to check against.
+  page-only time belongs in the page); no beats recognised in a chapter; no narration file to check against;
+  spoken: in a language whose numbers decline (Russian: SPOKEN_LANGS), digits, maths signs, Latin or Greek letters
+  left in what the voice says, outside {{shown|spoken}}: the voice reads "30°" in one case whatever the sentence needs
+  ("равен 30°" wants "тридцати градусам"), and reads a letter the way it guesses.
 --content defaults to content/<book> (content/ when that is missing and content/chNN exists: the first book's legacy
 layout), --brief to books/<book>. Both folders are git-ignored, so in a git worktree that lacks them they are taken
 from the main checkout (the worktree's git common dir), with a note. ElevenLabs audio tags such as [whispers] are not counted as narration text.
@@ -168,6 +171,20 @@ def words(s):
     parts = SAY.split(s)   # text, shown, spoken, text, ...
     s = ' '.join(p if i % 3 == 1 else '' if i % 3 == 2 else TAG.sub(' ', MARK.sub('', p)) for i, p in enumerate(parts))
     return re.sub(r'[^\w]+', ' ', s).lower().split()
+
+
+# Languages whose numbers change form with the sentence, so a voice cannot read digits and signs right on its own.
+SPOKEN_LANGS = {'ru'}
+UNSPOKEN = re.compile(r'[0-9A-Za-zͰ-Ͽ+\-−=<>≤≥≠±×·÷/^²³√°%∞]+')   # Ͱ-Ͽ: Greek; runs, so "30°" is one
+
+
+def unspoken(said):
+    """What the voice would have to guess in one beat's narration: digits, maths signs, Latin and Greek letters in the
+    spoken text (each {{shown|spoken}} pair taken as spoken, marks and audio tags left out), as runs ("30°", "sin"),
+    in order, once each."""
+    s = SAY.sub(lambda m: m.group(2), TAG.sub(' ', MARK.sub('', said)))
+    s = re.sub(r'(?<=\w)-(?=\w)', '', s)   # a hyphen inside a word (по-разному) is spelling, not minus
+    return list(dict.fromkeys(UNSPOKEN.findall(s)))
 
 
 def page_globals(page, html, err):
@@ -369,6 +386,10 @@ def lint_chapter(ch, content, out):
             cues = ' '.join(c[1] for c in T[b].get('cues', []))
             if cues and words(text) != words(cues):
                 err('stale', f'beat {b}: narration text differs from the generated audio')
+            left = unspoken(said) if lang in SPOKEN_LANGS else []
+            if left:
+                warn('spoken', f"beat {b}: the voice must guess {' '.join(left)}: write them as words in the case the "
+                               "sentence needs (тридцати градусам), or as {{shown|spoken}} ({{BC|бэ цэ}})")
     else:
         warn('stale', f'no narration at {nar}: narration not checked (pass --content)')
 
