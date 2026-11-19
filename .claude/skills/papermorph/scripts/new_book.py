@@ -125,6 +125,9 @@ def start(a, root, ch, site, work, content):
     q = lambda p: shlex.quote(str(p.relative_to(root) if p.is_relative_to(root) else p))   # a path with spaces still pastes
     S, A = q(HERE), site / ch / 'audio' / a.lang
     print(f'\n{a.kind} book started: {q(site)}/ (pilot {ch}), style.json template in {q(style)}; next:')
+    if a.lang != 'en':   # only the paths were changed: the kit's lines and its English voice would read the new language badly
+        print(f'  first: {q(narration)} and {q(style)} still hold the kit\'s English lines and voice; write the narration '
+              f'in "{a.lang}", set "voice" to a {a.lang} voice (edge-tts --list-voices) and book.language to "{a.lang}"')
     print(f'  uv run --with edge-tts python3 {S}/tts.py {q(narration)} {q(A)}')
     if a.kind == 'picture':
         print(f'  uv run --with numpy python3 {S}/sfx.py {q(site / ch / "audio" / "sfx")} knock chime room   # the template scene\'s knock, the find stop\'s chime, the room-tone bed')
