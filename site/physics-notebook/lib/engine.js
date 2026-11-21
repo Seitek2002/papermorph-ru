@@ -1786,7 +1786,7 @@ function start(i, play) {
   stopAudio(); clearCards();
   // P.gen counts starts: a done() kept from an earlier start of this same beat (a step replayed) no longer counts
   const gen = P.gen = (P.gen || 0) + 1;
-  Object.assign(P, { i, t: 0, idle: 0, waiting: false, done: false, afail: false, stall: 0, ct: 0, lost: 0, back: 0 });
+  Object.assign(P, { i, t: 0, idle: 0, waiting: false, held: false, done: false, afail: false, stall: 0, ct: 0, lost: 0, back: 0 });
   P.end = runBeat(i);
   evalTo(0);
   const a = P.audio = beatClip(i, true);
@@ -1874,9 +1874,22 @@ function beatDone() {
   evalTo(Infinity, TW.filter(w => !w.tail));
   const b = BEATS[P.i];
   if (b.ask) P.waiting = true;
-  else if (P.i < BEATS.length - 1) start(P.i + 1, true);
+  else if (P.i < BEATS.length - 1) STEP_BY_STEP ? holdStep() : start(P.i + 1, true);
   else { P.done = true; setPlaying(false); filmDone(); }
 }
+// A book whose lib/book.css sets --advance: manual is read like slides: each step plays, then holds its last frame,
+// waiting as a question does, until the reader goes on (this button, Space, Enter, →, a tap on the stage). Its
+// captions clear (ui). export.py draws frames by seeking, so the video still plays straight through.
+const STEP_BY_STEP = bookSetting('--advance') === 'manual';
+function holdStep() {
+  P.waiting = P.held = true;
+  const go = h('button', 'btn go', [translate('continue'), kbd('Enter')]);
+  go.onclick = stepOn;
+  const c = card({ x: 0, y: SH - 130, w: 0, cls: 'side' }, 'next');
+  Object.assign(c.style, { left: 'auto', right: '40px', width: 'auto' });
+  c.append(h('div', 'acts', [go]));
+}
+function stepOn() { if (P.held) start(P.i + 1, true); }
 // A chapter that ends on its last frame, with no closing card of questions (a picture book), is finished there: it
 // counts as done, and CHAPTER.next is offered over that frame. Seeking or replaying clears the button with the cards.
 function filmDone() {
@@ -1969,7 +1982,7 @@ function ui() {
   // question, so it has none
   const asking = !!b.ask;
   if (P.started && !P.done && asking && P.waiting) text = captions ? askLine : '';   // a listen-and-find character's line
-  else if (P.started && !P.done && !(asking && $('ui').querySelector('.card.screen'))) {
+  else if (P.started && !P.done && !P.held && !(asking && $('ui').querySelector('.card.screen'))) {
     // a cue is [start, line], [start, line, end] or [start, line, end, 1]: with an end, the caption clears once its
     // words are over; a 1 marks a line in another language, whose subtitle shows even with captions off (as does every
     // cue of a beat whose timings say forced: true, from tts.py or eleven.py)
@@ -2013,10 +2026,11 @@ function hideCover() {
 function togglePlay() {
   if (!P.started) { turnPhone(); hideCover(); return setPlaying(true); }
   if (P.done) return restart();   // the end of a film (or of a chapter whose last step is a question): play again
-  if (P.waiting) return;
+  if (P.waiting) return stepOn();   // a step held for the reader (--advance: manual) goes on; a question waits
   setPlaying(!P.playing);
 }
-const back1 = () => seek(P.t > 2.5 || P.i === 0 ? P.i : P.i - 1);
+// ← replays a step 2.5 s in, or goes back one; a step held for the reader is over, so ← goes back one, as on slides
+const back1 = () => seek((P.t > 2.5 && !P.held) || P.i === 0 ? P.i : P.i - 1);
 const restart = () => { for (const k in SCORE) delete SCORE[k]; hideCover(); seek(0, true); };
 $('cover').onclick = togglePlay;
 $('stage').addEventListener('click', e => {
@@ -2107,7 +2121,8 @@ document.addEventListener('keydown', e => {
   let used = true;
   if (k === ' ') togglePlay();
   else if (k === 'ArrowLeft' && free) back1();
-  else if (k === 'ArrowRight' && free) { if (P.i < BEATS.length - 1) seek(P.i + 1); }
+  else if (k === 'ArrowRight' && free) { if (P.held) stepOn(); else if (P.i < BEATS.length - 1) seek(P.i + 1); }
+  else if (k === 'Enter' && P.held) stepOn();
   else if (k === 'Home') restart();
   else if (isShortcut(e, 'c')) setCaptions(!captions);
   else if (k === '<' || k === ',' || isShortcutCode(e, 'Comma')) stepSpeed(-1);

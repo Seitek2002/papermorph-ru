@@ -96,7 +96,7 @@ The player is the same in every tier; a reader drives it with these keys and the
 
 | Key | Does |
 |---|---|
-| Space | play and pause; once the chapter has ended, replay |
+| Space | play and pause; once the chapter has ended, replay; on a step held for the reader, go on |
 | ← / → | previous or next beat (Shift+← / → during a question) |
 | Home | restart |
 | C | captions on or off ([core/sound.md](sound.md#captions-and-other-languages)); a question's narration is captioned too, above its band or beside its corner card. They start off, or on in a book whose `lib/book.css` sets `--captions: on`; the reader's own choice is remembered |
@@ -106,6 +106,7 @@ The player is the same in every tier; a reader drives it with these keys and the
 | Enter, R | after the end (the finish card, or a film's last frame): Enter opens `CHAPTER.next` (replays when there is none), R replays |
 | N, Shift+N | with `?review` in the URL: N pauses and asks for a note on this moment, Shift+N copies the chapter's notes ([core/review.md](review.md#the-users-notes)) |
 
+- **Step by step.** A chapter plays through, each beat starting when the one before ends. A book whose `lib/book.css` sets `--advance: manual` is read like slides instead: each beat plays, then holds its last frame with its captions cleared and a Continue button in the bottom right corner, until the reader goes on with the button, Space, Enter, → or a tap on the stage; ← there goes back one beat, since this one is over. A question beat waits for its answers as before, and the last beat ends the chapter as usual. `export.py` draws its frames by seeking, so the video plays straight through either way. `engine/check_advance.py` plays it through headless.
 - **Full screen** fills the screen with the stage, the controls lying over its foot while the pointer moves, a key is pressed, the film is paused or the pointer is on them (a touch screen, with no hover, keeps them under the stage). It also turns the screen to the stage's orientation where the browser can lock it (Android, not iOS), and on a phone held across the stage, starting the chapter goes full screen that way, so a landscape lesson is not a strip on an upright phone.
 - **The bar.** Clicking a step segment (anywhere on the bar's height, for a finger) jumps to that point of the beat (`seekInto(i, frac)`); the next beat's clip preloads while one plays. The narration plays through two media elements made once, the clip playing and the next one loading in turn, and `findWords`' lines and chime through one each; the reader's first touch, click or key plays them muted, as it does the music, because iOS (every browser there) lets an element play outside a touch only if that same element once played inside one. A chapter's own sound made with `new Audio()` and played later, from a beat or a timer, is silent on iOS: play it with `sfx()` or `music()`, or inside the reader's tap. `seek(i, play)` rebuilds and jumps; `start(i, play)` begins a beat from the current picture.
 - **The clock.** While audio plays, the beat clock follows `audio.currentTime`. In a hidden tab (another tab or window in front) a timer keeps the clock going, so the chapter plays on from beat to beat.
