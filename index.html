@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Учебники в слайдах</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: one chalkboard column — the thesis, two lesson cards side by side (stacked on a phone), then the keys.
+   A single dark look on purpose: it is the board the lessons themselves are drawn on. */
+:root {
+  --board: #1d2b27;      /* the lessons' chalkboard */
+  --panel: #24352f;      /* a card on the board */
+  --edge: #375049;
+  --chalk: #ece8dc;      /* text */
+  --dim: #a9b5ad;        /* secondary text, 7:1 on the board */
+  --task: #f0b45a;       /* the lessons' own orange: actions */
+  --sky: #86c9e8;        /* maths card */
+  --font-display: "Unbounded", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Golos Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+body {
+  background: var(--board); color: var(--chalk); font: 17px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 48px 64px;
+  background-image: radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, .045), transparent 60%);
+}
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 48px; }
+header { display: grid; gap: 16px; max-width: 760px; }
+.eyebrow { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--task); font-weight: 600; margin: 0; }
+h1 { font: 600 clamp(28px, 4.4vw, 46px)/1.15 var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lede { margin: 0; color: var(--dim); font-size: 19px; max-width: 64ch; }
+.lessons { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 24px; }
+.lesson { background: var(--panel); border: 1px solid var(--edge); border-radius: 18px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+.lesson img { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: 1px solid var(--edge); }
+.body { padding: 22px 24px 24px; display: grid; gap: 12px; align-content: start; }
+.subject { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; margin: 0; }
+.lesson.maths .subject { color: var(--sky); }
+h2 { font: 600 22px/1.25 var(--font-display); margin: 0; text-wrap: balance; }
+.source { margin: 0; color: var(--dim); font-size: 15px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.facts li { border: 1px solid var(--edge); border-radius: 999px; padding: 3px 12px; font-size: 14px; color: var(--chalk); font-variant-numeric: tabular-nums; }
+.acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 999px; padding: 10px 20px; border: 2px solid var(--task); }
+.btn.go { background: var(--task); color: #1d2b27; }
+.btn.quiet { color: var(--task); }
+.btn:hover { filter: brightness(1.08); }
+.btn:focus-visible { outline: 3px solid var(--chalk); outline-offset: 3px; }
+.how { display: grid; gap: 18px; }
+.how h2 { font-size: 20px; }
+.keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 14px 40px; margin: 0; }
+.keys div { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 14px; align-items: baseline; min-width: 0; }
+.keys dt { display: flex; gap: 6px; flex-wrap: wrap; }
+.keys dd { margin: 0; color: var(--dim); min-width: 0; }
+kbd { font: 600 13px/1 var(--font-body); color: var(--chalk); border: 1px solid var(--edge); border-bottom-width: 3px; border-radius: 6px; padding: 5px 8px; background: var(--panel); white-space: nowrap; }
+footer { color: var(--dim); font-size: 14px; border-top: 1px solid var(--edge); padding-top: 20px; display: grid; gap: 6px; max-width: 760px; }
+footer p { margin: 0; }
+@media (prefers-reduced-motion: no-preference) { .btn { transition: filter .15s; } }
+body { margin: 0; }
+.lessons { max-width: 640px; }
+footer a { color: var(--chalk); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Прототип · 21 ноября 2026</p>
+    <h1>Несколько страниц учебника превращаются в урок из анимированных слайдов</h1>
+    <p class="lede">Каждый слайд проигрывает свою анимацию с голосом и субтитрами и ждёт, пока вы нажмёте «Продолжить». Между слайдами — вопросы с проверкой, в конце итог. Сколько слайдов дать на страницу, решается по содержанию.</p>
+  </header>
+
+  <section class="lessons" aria-label="Уроки">
+    <article class="lesson maths">
+      <img src="img/trig.jpg" alt="Слайд урока: единичная окружность, точка M, синус и косинус как координаты" width="960" height="540">
+      <div class="body">
+        <p class="subject">Математика</p>
+        <h2>Синус, косинус и тангенс</h2>
+        <p class="source">Викиучебник «Тригонометрические функции», 4 страницы</p>
+        <ul class="facts"><li>12 слайдов</li><li>≈ 5 минут</li><li>1 проверка и 3 задачи</li></ul>
+        <div class="acts">
+          <a class="btn go" href="trigonometry-ru/ch01/index.html">Смотреть урок</a>
+          <a class="btn quiet" href="trigonometry-ru/index.html">Обложка книги</a>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="how" aria-labelledby="howTitle">
+    <h2 id="howTitle">Как смотреть</h2>
+    <dl class="keys">
+      <div><dt><kbd>Начать урок</kbd></dt><dd>первый слайд, включается звук</dd></div>
+      <div><dt><kbd>Продолжить</kbd><kbd>Пробел</kbd><kbd>→</kbd></dt><dd>следующий слайд, когда текущий доиграл</dd></div>
+      <div><dt><kbd>←</kbd></dt><dd>предыдущий слайд; по полоске внизу — любой</dd></div>
+      <div><dt><kbd>CC</kbd><kbd>F</kbd></dt><dd>субтитры; полный экран</dd></div>
+    </dl>
+  </section>
+
+  <footer>
+    <p>По материалу «<a href="https://ru.wikibooks.org/w/index.php?oldid=269655" target="_blank" rel="noopener">Тригонометрические функции</a>» из русского Викиучебника (версия 269655, <a href="https://ru.wikibooks.org/w/index.php?curid=31015&amp;action=history" target="_blank" rel="noopener">авторы</a>). Материал изменён: сокращён, пересказан для школьников, добавлены схемы, анимация, озвучка и задачи. Урок распространяется по лицензии <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</p>
+    <p>Плеер: <a href="https://github.com/DozenTwelve/Papermorph" target="_blank" rel="noopener">Papermorph</a> с доработками, лицензия <a href="LICENSE.txt">MIT</a>. Голос синтезирован Edge TTS. На телефоне удобнее смотреть горизонтально.</p>
+  </footer>
+</div>
+</body>
+</html>

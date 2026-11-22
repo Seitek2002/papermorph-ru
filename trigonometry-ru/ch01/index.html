@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru">
+<title>Синус, косинус и тангенс</title>
+<link rel="stylesheet" href="../lib/engine.css">
+<link rel="expect" href="#bar" blocking="render"><!-- hold the first frame until the player exists, so the page transition can run -->
+</head>
+<body>
+<script src="../lib/engine.js"></script>
+<script src="../lib/math.js"></script>
+<script src="audio/ru/timings.js"></script>
+<script>
+'use strict';
+// <html lang> sets the interface text, language the audio folder: keep both, and the timings path above, in the book's language.
+const CHAPTER = { number: 1, title: 'Синус, косинус и тангенс', minutes: 5, language: 'ru' };
+
+/* ---------- colours: one meaning each across the chapter (style.json look.meaning) ---------- */
+const HYP = COL.whole, OPP = COL.nat, ADJ = COL.int, ANG = COL.irr;
+const DEG = Math.PI / 180;
+
+/* ---------- chapter drawing helpers ---------- */
+const seg = (p, x1, y1, x2, y2, stroke = COL.chalk, w = 5, o = {}) => path(p, `M${x1} ${y1}L${x2} ${y2}`, { stroke, 'stroke-width': w }, o);
+// An arc around (cx, cy) from angle a0 to a1 in degrees, counterclockwise on screen (y grows down).
+const arcD = (cx, cy, r, a0, a1) => {
+  const p0 = [cx + r * Math.cos(a0 * DEG), cy - r * Math.sin(a0 * DEG)], p1 = [cx + r * Math.cos(a1 * DEG), cy - r * Math.sin(a1 * DEG)];
+  return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)}A${r} ${r} 0 ${Math.abs(a1 - a0) > 180 ? 1 : 0} ${a1 > a0 ? 0 : 1} ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`;
+};
+// The square that marks a right angle at (x, y); sx, sy say which way the two legs run (±1).
+const rightMark = (p, x, y, sx, sy, s = 26) => path(p, `M${x + sx * s} ${y}L${x + sx * s} ${y + sy * s}L${x} ${y + sy * s}`, { stroke: COL.chalk, 'stroke-width': 3 });
+const lbl = (p, str, x, y, { size = 34, fill = COL.chalk, anchor = 'middle', weight = 500, font = UI, o = 0 } = {}) => T(p, str, { x, y, size, fill, anchor, weight, font, o });
+const mth = (p, parts, x, y, { size = 44, fill = COL.chalk, anchor = 'middle', o = 0 } = {}) => M(p, [].concat(parts), { x, y, size, fill, anchor, o });
+
+// A right triangle with A bottom left, C bottom right (the right angle) and B above C.
+function rightTri(p, A, B, C, { w = 5, arcR = 80 } = {}) {
+  const g = G(p);
+  const adj = seg(g, ...A, ...C, COL.chalk, w, { d: 0 });
+  const opp = seg(g, ...C, ...B, COL.chalk, w, { d: 0 });
+  const hyp = seg(g, ...A, ...B, COL.chalk, w, { d: 0 });
+  const right = rightMark(g, C[0], C[1], -1, -1);
+  put(right, { o: 0 });
+  const a = Math.atan2(C[1] - B[1], C[0] - A[0]) / DEG;
+  const ang = path(g, arcD(A[0], A[1], arcR, 0, a), { stroke: ANG, 'stroke-width': 4 }, { d: 0 });
+  const names = [mth(g, 'A', A[0] - 30, A[1] + 42, { size: 40 }), mth(g, 'B', B[0] + 32, B[1] - 6, { size: 40 }), mth(g, 'C', C[0] + 30, C[1] + 42, { size: 40 })];
+  const al = lbl(g, 'α', A[0] + (arcR + 26) * Math.cos(a / 2 * DEG), A[1] - (arcR + 26) * Math.sin(a / 2 * DEG) + 12, { size: 36, fill: ANG, font: MATH });
+  return { g, adj, opp, hyp, right, ang, names, al, a };
+}
+// Draw a triangle made by rightTri in at t0.
+function drawTri(t, t0) {
+  draw(t.adj, t0, .6); draw(t.opp, t0 + .3, .6); draw(t.hyp, t0 + .6, .7);
+  t.names.forEach((e, i) => show(e, t0 + .3 + i * .2, .4));
+}
+
+// One definition row: name = top / bottom, the top and bottom flying in from the triangle's side labels.
+function ratioRow(p, name, top, bot, y, t0, from) {
+  const X = 1060, size = 50;
+  show(mth(p, [name, ' ='], 960, y + 16, { size, anchor: 'end' }), t0, .4);
+  draw(seg(p, X - 60, y, X + 60, y, COL.chalk, 3, { d: 0 }), t0 + .4, .4);
+  const tp = mth(p, top.s, X, y - 16, { size, fill: top.c }), bt = mth(p, bot.s, X, y + 54, { size, fill: bot.c });
+  [[tp, from[0], 0], [bt, from[1], .25]].forEach(([e, [fx, fy], k]) => {
+    const { x, y: yy } = st(e);   // copy the numbers before moving the element (st is live)
+    put(e, { x: fx, y: fy, o: 0 });
+    show(e, t0 + k, .2);
+    tw(e, { x, y: yy }, t0 + k, .9, io);
+  });
+  return { tp, bt };
+}
+
+/* ---------- the unit circle: origin, radius in px, and the point on it ---------- */
+const UO = [520, 430], UR = 270;
+function unitPlane(p, t0) {
+  const g = G(p);
+  const ax = seg(g, 180, UO[1], 900, UO[1], COL.dim, 3, { d: 0 }), ay = seg(g, UO[0], 760, UO[0], 110, COL.dim, 3, { d: 0 });
+  draw(ax, t0, .6); draw(ay, t0 + .2, .6);
+  const heads = G(g, { o: 0 });
+  path(heads, `M900 ${UO[1]}l-18 -9v18z`, { fill: COL.dim, stroke: 'none' });
+  path(heads, `M${UO[0]} 110l-9 18h18z`, { fill: COL.dim, stroke: 'none' });
+  mth(heads, 'x', 900, UO[1] + 42, { size: 36, fill: COL.dim, o: 1 });
+  mth(heads, 'y', UO[0] + 30, 124, { size: 36, fill: COL.dim, o: 1 });
+  mth(heads, 'O', UO[0] - 24, UO[1] + 38, { size: 32, fill: COL.dim, o: 1 });
+  mth(heads, '1', UO[0] + UR + 14, UO[1] + 38, { size: 30, fill: COL.dim, o: 1 });
+  mth(heads, '−1', UO[0] - UR - 22, UO[1] + 38, { size: 30, fill: COL.dim, o: 1 });
+  show(heads, t0 + .5, .4);
+  return g;
+}
+// The point M at angle a on the unit circle, its radius and its two legs; U.set(a) redraws them.
+function unitPoint(p) {
+  const g = G(p);
+  const adj = seg(g, 0, 0, 1, 0, ADJ, 8, { d: 0 }), opp = seg(g, 0, 0, 1, 0, OPP, 7, { d: 0 }), rad = seg(g, 0, 0, 1, 0, HYP, 5, { d: 0 });
+  const angA = path(g, '', { stroke: ANG, 'stroke-width': 4 }, { o: 0 });
+  const rm = path(g, '', { stroke: COL.chalk, 'stroke-width': 2.5 }, { o: 0 });
+  const dotG = G(g, { o: 0 });
+  mk('circle', { r: 11, fill: COL.chalk }, dotG);
+  const nameM = mth(g, 'M', 0, 0, { size: 38, anchor: 'middle' });
+  const al = lbl(g, 'α', 0, 0, { size: 34, fill: ANG, font: MATH });
+  let last = null;
+  const U = { g, adj, opp, rad, angA, rm, dotG, nameM, al, a: 0 };
+  U.at = a => [UO[0] + UR * Math.cos(a * DEG), UO[1] - UR * Math.sin(a * DEG)];
+  U.set = a => {
+    if (a === last) return;
+    last = U.a = a;
+    const [x, y] = U.at(a), xs = x.toFixed(1), ys = y.toFixed(1), c = Math.cos(a * DEG);
+    rad.setAttribute('d', `M${UO[0]} ${UO[1]}L${xs} ${ys}`);
+    opp.setAttribute('d', `M${xs} ${ys}L${xs} ${UO[1]}`);
+    adj.setAttribute('d', `M${UO[0]} ${UO[1]}L${xs} ${UO[1]}`);
+    const am = ((a % 360) + 360) % 360;
+    angA.setAttribute('d', am < .5 ? '' : arcD(UO[0], UO[1], 60, 0, Math.min(am, 359.5)));
+    const s = Math.abs(UO[1] - y) > 30 && Math.abs(UO[0] - x) > 30 ? 22 : 0;   // the right-angle mark only when the legs have room
+    rm.setAttribute('d', s ? `M${(x - Math.sign(c) * s).toFixed(1)} ${UO[1]}V${(UO[1] - Math.sign(y < UO[1] ? 1 : -1) * s).toFixed(1)}H${xs}` : '');
+    put(dotG, { x, y });
+    put(nameM, { x: x + (c >= 0 ? 34 : -34), y: y + (y < UO[1] ? -16 : 40) });
+    const mid = Math.max(am, 1) / 2;
+    put(al, { x: UO[0] + 92 * Math.cos(mid * DEG), y: UO[1] - 92 * Math.sin(mid * DEG) + 12 });
+  };
+  return U;
+}
+// A row "name = top/1" whose "/1" falls away, leaving "name = top".
+function overOne(p, name, top, fill, y, t0) {
+  const X = 1250, size = 48;
+  show(mth(p, [name, ' ='], 1190, y + 16, { size, anchor: 'end' }), t0, .4);
+  const bar = seg(p, X - 30, y, X + 30, y, COL.chalk, 3, { d: 0 }), one = mth(p, '1', X, y + 54, { size, fill: HYP });
+  const tp = mth(p, top, X, y - 16, { size, fill });
+  show(tp, t0 + .2, .3); draw(bar, t0 + .4, .3); show(one, t0 + .5, .3);
+  hide(bar, t0 + 1.6, .3); hide(one, t0 + 1.6, .3);
+  tw(tp, { y: y + 16, x: X - 12 }, t0 + 1.8, .5, io);
+  return tp;
+}
+// Clock positions for the point: a list of [time, angle, duration] moves from a start angle.
+const angleAt = (a0, moves) => t => { let a = a0; for (const [t0, to, dur] of moves) { if (t <= t0) break; a = a + (to - a) * io(Math.min(1, (t - t0) / dur)); } return a; };
+// A number for the screen with the book's decimal sign, rounded to 2 places.
+const n2 = v => num(Math.round(v * 100) / 100 + 0);
+
+/* ---------- beats: [id, title, run(m, D), { ask }?] ---------- */
+const TA = [330, 640], TB = [1010, 220], TC = [1010, 640];   // the triangle of the first beats
+const BEATS = [
+  ['intro', 'Синус, косинус и тангенс', (m, D) => {
+    const g = G(scene, { o: 0, y: 24 });
+    S.panel = g;
+    T(g, 'Тригонометрия · Глава 1', { x: 800, y: 320, size: 30, fill: COL.dim, anchor: 'middle' });
+    T(g, 'Синус, косинус и тангенс', { x: 800, y: 430, size: 84, weight: 600, anchor: 'middle' });
+    tw(g, { o: 1, y: 0 }, .2, 1.1, out);
+    const r = lbl(scene, 'от прямоугольного треугольника к окружности', 800, 540, { size: 36, fill: COL.dim });
+    show(r, m('sub'));
+    const t = rightTri(g, [640, 760], [960, 600], [960, 760], { w: 4, arcR: 50 });
+    [t.adj, t.opp, t.hyp].forEach((e, i) => draw(e, m('sub', .4 + i * .3), .6));
+    t.names.forEach(e => put(e, { o: 0 }));
+    draw(t.ang, m('sub', 1.4), .5); show(t.al, m('sub', 1.6));
+    tw(g, { o: 0, y: -24 }, D - .9, .8); hide(r, D - .9, .8);
+  }],
+  ['triangle', 'Прямоугольный треугольник', (m, D) => {
+    const p = panel(0);
+    const all = S.triG = G(p), t = S.tri = rightTri(all, TA, TB, TC);
+    drawTri(t, .2);
+    show(t.right, m('right'), .4); pulse(t.right, m('right', .1), 1.25);
+    draw(t.ang, m('alpha'), .6); show(t.al, m('alpha', .4));
+    const words = S.triWords = G(all);
+    tw(t.hyp, { c_stroke: HYP, 'a_stroke-width': 9 }, m('hyp'), .5);
+    const hl = lbl(words, 'гипотенуза', 650, 404, { size: 38, fill: HYP });
+    put(hl, { r: -t.a });
+    show(hl, m('hyp', .3));
+    tw(t.opp, { c_stroke: OPP, 'a_stroke-width': 9 }, m('opp'), .5);
+    show(lbl(words, 'противолежащий', 1044, 420, { size: 36, fill: OPP, anchor: 'start' }), m('opp', .3));
+    show(lbl(words, 'катет', 1044, 466, { size: 36, fill: OPP, anchor: 'start' }), m('opp', .4));
+    tw(t.adj, { c_stroke: ADJ, 'a_stroke-width': 9 }, m('adj'), .5);
+    show(lbl(words, 'прилежащий катет', 670, 700, { size: 36, fill: ADJ }), m('adj', .3));
+  }],
+  ['ratios', 'Отношения сторон', (m, D) => {
+    const p = S.panel, t = S.tri;
+    hide(S.triWords, .1, .4);
+    tw(S.triG, { x: -151, y: 192, s: .7 }, .3, 1, io);   // A to (80, 640), B to (556, 346), C to (556, 640)
+    const tags = { AB: [299, 476], BC: [590, 506], AC: [318, 704] };
+    show(mth(p, 'AB', ...tags.AB, { size: 40, fill: HYP }), 1.2);
+    show(mth(p, 'BC', ...tags.BC, { size: 40, fill: OPP, anchor: 'start' }), 1.4);
+    show(mth(p, 'AC', ...tags.AC, { size: 40, fill: ADJ }), 1.6);
+    const BC = [tags.BC[0] + 30, tags.BC[1]], from = s => s === 'BC' ? BC : tags[s];
+    const flash = (e, t0) => { tw(e, { 'a_stroke-width': 15 }, t0, .25, out); tw(e, { 'a_stroke-width': 9 }, t0 + .25, .5); };
+    ratioRow(p, 'sin α', { s: 'BC', c: OPP }, { s: 'AB', c: HYP }, 170, m('sin'), [from('BC'), from('AB')]);
+    flash(t.opp, m('sin')); flash(t.hyp, m('sin', .25));
+    ratioRow(p, 'cos α', { s: 'AC', c: ADJ }, { s: 'AB', c: HYP }, 330, m('cos'), [from('AC'), from('AB')]);
+    flash(t.adj, m('cos')); flash(t.hyp, m('cos', .25));
+    const tg = ratioRow(p, 'tg α', { s: 'BC', c: OPP }, { s: 'AC', c: ADJ }, 490, m('tg'), [from('BC'), from('AC')]);
+    flash(t.opp, m('tg')); flash(t.adj, m('tg', .25));
+    // ctg turns tg upside down: its top and bottom come from tg's bottom and top
+    const pos = e => { const { x, y } = st(e); return [x, y]; };
+    ratioRow(p, 'ctg α', { s: 'AC', c: ADJ }, { s: 'BC', c: OPP }, 650, m('ctg', .6), [pos(tg.bt), pos(tg.tp)]);
+  }],
+  ['same', 'Только угол', (m, D) => {
+    const p = panel(0);
+    const A = [190, 660], k = angleAt(1, [[m('grow', .3), 2, m('nums') - m('grow') - .8]]);
+    const a = Math.atan2(3, 4) / DEG;
+    const ghost = path(p, `M${A[0]} ${A[1]}H${A[0] + 360}V${A[1] - 270}Z`, { stroke: COL.dim, 'stroke-width': 3, 'stroke-dasharray': '10 9', fill: 'none' }, { o: 0 });
+    const adj = seg(p, 0, 0, 1, 0, ADJ, 7), opp = seg(p, 0, 0, 1, 0, OPP, 7), hyp = seg(p, 0, 0, 1, 0, HYP, 7);
+    const rm = path(p, '', { stroke: COL.chalk, 'stroke-width': 3 });
+    const ang = path(p, arcD(A[0], A[1], 70, 0, a), { stroke: ANG, 'stroke-width': 4 });
+    lbl(p, 'α', A[0] + 96 * Math.cos(a / 2 * DEG), A[1] - 96 * Math.sin(a / 2 * DEG) + 12, { size: 36, fill: ANG, font: MATH, o: 1 });
+    const nBC = lbl(p, '', 0, 0, { size: 40, fill: OPP, font: MATH, anchor: 'start', o: 1 }), nAB = lbl(p, '', 0, 0, { size: 40, fill: HYP, font: MATH, anchor: 'end', o: 1 });
+    const pic = [adj, opp, hyp, rm, ang, nBC, nAB];
+    pic.forEach(e => put(e, { o: 0 })); pic.forEach((e, i) => show(e, .3 + i * .08, .4));
+    // readouts on the right: the two lengths live, and their ratio, which never moves
+    show(mth(p, 'BC =', 1180, 260, { size: 46, fill: OPP, anchor: 'end' }), .5);
+    show(mth(p, 'AB =', 1180, 340, { size: 46, fill: HYP, anchor: 'end' }), .6);
+    const vBC = lbl(p, '', 1200, 260, { size: 46, fill: OPP, font: MATH, anchor: 'start', o: 1 }), vAB = lbl(p, '', 1200, 340, { size: 46, fill: HYP, font: MATH, anchor: 'start', o: 1 });
+    let lastK = null;
+    clockRun(t => {
+      const K = k(t), u = 90 * K;
+      if (K === lastK) return;
+      lastK = K;
+      const C = [A[0] + 4 * u, A[1]], B = [C[0], A[1] - 3 * u];
+      adj.setAttribute('d', `M${A[0]} ${A[1]}L${C[0]} ${C[1]}`);
+      opp.setAttribute('d', `M${C[0]} ${C[1]}L${B[0]} ${B[1]}`);
+      hyp.setAttribute('d', `M${A[0]} ${A[1]}L${B[0]} ${B[1]}`);
+      rm.setAttribute('d', `M${C[0] - 26} ${C[1]}V${C[1] - 26}H${C[0]}`);
+      const bc = num(Math.round(3 * K * 10) / 10), ab = num(Math.round(5 * K * 10) / 10);
+      nBC.textContent = bc; put(nBC, { x: C[0] + 18, y: (B[1] + C[1]) / 2 + 14 });
+      nAB.textContent = ab; put(nAB, { x: (A[0] + B[0]) / 2 - 22, y: (A[1] + B[1]) / 2 - 18 });
+      vBC.textContent = bc; vAB.textContent = ab;
+    }, D);
+    const ratio = G(p, { o: 0 });
+    M(ratio, ['BC : AB = 0,6'], { x: 1200, y: 460, size: 50, fill: COL.task });
+    show(ratio, m('keep'), .5); pulse(ratio, m('keep', .5), 1.15);
+    show(ghost, m('nums', -.2), .5);
+    show(mth(p, [F(3, 5), ' = ', F(6, 10), ' = 0,6'], 1200, 600, { size: 48 }), m('nums', .2), .5);
+    show(lbl(p, 'зависит только от угла', 1200, 180, { size: 36, fill: ANG, weight: 600 }), m('only', .3), .5);
+    tw(ang, { 'a_stroke-width': 9 }, m('only', .3), .3, out); tw(ang, { 'a_stroke-width': 4 }, m('only', .6), .6);
+  }],
+  ['q1', 'Быстрая проверка', () => {
+    const p = panel(0);
+    const t = rightTri(p, [470, 560], [910, 230], [910, 560], { arcR: 70 });
+    drawTri(t, .1); show(t.right, .5); draw(t.ang, .6, .4); show(t.al, .8);
+    show(mth(p, '8', 690, 612, { size: 40, fill: ADJ }), .9);
+    show(mth(p, '6', 944, 410, { size: 40, fill: OPP, anchor: 'start' }), 1);
+    show(mth(p, '10', 662, 372, { size: 40, fill: HYP }), 1.1);
+  }, { ask: done => quiz(BAND, [{
+    id: 'c-sin', prompt: ['Найдите синус угла ', $m('α'), '.'],
+    build: blanks([{ parts: ['sin α = ', { box: '3/5' }],
+      why: 'Против угла α лежит катет 6, гипотенуза 10: 6/10 = 3/5.',
+      hint: 'Синус: противолежащий катет делим на гипотенузу. Какой катет лежит напротив α?' }]),
+  }], done) }],
+  ['example', 'Найдём сторону', (m, D) => {
+    const p = panel(0);
+    const t = rightTri(p, [170, 600], [646, 325], [646, 600], { arcR: 76 });
+    drawTri(t, .2); show(t.right, .9);
+    tw(t.hyp, { c_stroke: HYP, 'a_stroke-width': 9 }, m('given'), .5);
+    show(mth(p, '10', 386, 432, { size: 42, fill: HYP }), m('given', .3));
+    draw(t.ang, m('given', 1.6), .5);
+    show(mth(p, '30°', 300, 584, { size: 38, fill: ANG }), m('given', 1.9));
+    tw(t.opp, { c_stroke: OPP, 'a_stroke-width': 9 }, m('mult'), .5);
+    const q = mth(p, '?', 680, 476, { size: 46, fill: OPP, anchor: 'start' });
+    show(q, m('mult', .3));
+    eqLine(p, 'sin 30°', F(1, 2), 250, m('sin30'), { xEq: 1130, size: 48 });
+    eqLine(p, 'BC', 'AB · sin 30°', 390, m('mult', .8), { xEq: 1130, size: 48 });
+    eqLine(p, '', ['10 · ', F(1, 2)], 520, m('ten'), { xEq: 1130, size: 48 });
+    const ans = eqLine(p, 'BC', '5', 650, m('ans'), { xEq: 1130, size: 48, fill: OPP });
+    pulse(ans, m('ans', .5), 1.12);
+    hide(q, m('ans'), .3);
+    pop(mth(p, '5', 680, 476, { size: 46, fill: OPP, anchor: 'start', o: 0 }), m('ans', .2));
+  }],
+  ['circle', 'Единичная окружность', (m, D) => {
+    const p = panel(0);
+    unitPlane(p, .2);
+    const circ = path(p, arcD(UO[0], UO[1], UR, 0, 180), { stroke: COL.chalk, 'stroke-width': 3 }, { d: 0 });
+    draw(circ, m('circle'), 1.4);
+    const U = S.U = unitPoint(p);
+    U.set(40);
+    pop(U.dotG, m('point')); show(U.nameM, m('point', .2));
+    draw(U.rad, m('point', .4), .6); show(U.angA, m('point', 1)); show(U.al, m('point', 1.2));
+    draw(U.opp, m('drop'), .7); draw(U.adj, m('drop', .9), .6); show(U.rm, m('drop', 1.4));
+    const [mx, my] = U.at(40);
+    S.one = mth(p, '1', (UO[0] + mx) / 2 - 22, (UO[1] + my) / 2 - 12, { size: 40, fill: HYP });
+    show(S.one, m('unit'));
+    S.yLeg = mth(p, 'y', mx + 26, (UO[1] + my) / 2 + 14, { size: 40, fill: OPP, anchor: 'start' });
+    S.xLeg = mth(p, 'x', (UO[0] + mx) / 2, UO[1] + 44, { size: 40, fill: ADJ });
+    show(S.yLeg, m('sinY')); show(S.xLeg, m('cosX'));
+    S.sinRow = overOne(p, 'sin α', 'y', OPP, 210, m('sinY', .3));
+    S.cosRow = overOne(p, 'cos α', 'x', ADJ, 330, m('cosX', .3));
+  }],
+  ['obtuse', 'Тупой угол', (m, D) => {
+    const p = S.panel, U = S.U;
+    [S.yLeg, S.xLeg, S.one].forEach(e => hide(e, m('move'), .3));   // these labels name the 40° picture only
+    const ang = angleAt(40, [[m('move', .2), 135, 2.4], [m('at90', .4), 90, 1.6]]);
+    clockRun(t => U.set(ang(t)), D);
+    tw(U.adj, { 'a_stroke-width': 14 }, m('neg'), .25, out); tw(U.adj, { 'a_stroke-width': 8 }, m('neg', .5), .5);
+    const neg = mth(p, '< 0', 1290, 346, { size: 48, fill: COL.bad, anchor: 'start' });
+    show(neg, m('neg', .4), .4);
+    // the angle that completes α to 180°: the same height on the other side
+    const ghost = G(p, { o: 0 }), [gx, gy] = U.at(45);
+    seg(ghost, UO[0], UO[1], gx, gy, COL.dim, 4);
+    path(ghost, `M${gx} ${gy}H${U.at(135)[0]}`, { stroke: OPP, 'stroke-width': 3, 'stroke-dasharray': '10 8' });
+    path(ghost, arcD(UO[0], UO[1], 120, 0, 45), { stroke: ANG, 'stroke-width': 3, 'stroke-dasharray': '8 7' });
+    mk('circle', { cx: gx, cy: gy, r: 9, fill: COL.dim }, ghost);
+    T(ghost, '180° − α', { x: UO[0] + 128, y: UO[1] - 40, size: 28, fill: ANG, font: MATH });
+    show(ghost, m('mirror', .5), .6);
+    const rule1 = mth(p, 'sin(180° − α) = sin α', 1250, 470, { size: 42 }), rule2 = mth(p, 'cos(180° − α) = −cos α', 1250, 560, { size: 42 });
+    show(rule1, m('rule'), .5); show(rule2, m('rule', 1.6), .5);
+    hide(ghost, m('tg90', -.2), .5);
+    const tgName = mth(p, 'tg α =', 1180, 686, { size: 44, anchor: 'end' });
+    show(tgName, m('tg90'), .4);
+    const tgFrac = frac(p, 'sin α', 'cos α', 1270, 670, m('tg90', .3), { size: 40, anchor: 'middle', topFill: OPP, botFill: ADJ });
+    hide(neg, m('at90'), .3);
+    const at90 = G(p, { o: 0 });
+    mk('circle', { cx: UO[0], cy: UO[1] - UR, r: 22, fill: 'none', stroke: COL.bad, 'stroke-width': 4 }, at90);
+    T(at90, 'tg 90° не существует', { x: UO[0] - 34, y: UO[1] - UR - 14, size: 32, fill: COL.bad, weight: 600, anchor: 'end' });
+    show(at90, m('at90', 2), .5);
+    S.obtuse = [rule1, rule2, tgName, tgFrac.g, at90];   // the next beat clears these and keeps the definitions
+  }],
+  ['any', 'Любой угол', (m, D) => {
+    const p = S.panel, U = S.U;
+    S.obtuse.forEach(e => hide(e, .1, .4));
+    const lower = path(p, arcD(UO[0], UO[1], UR, 180, 360), { stroke: COL.chalk, 'stroke-width': 3 }, { d: 0 });
+    draw(lower, .3, 1);
+    const ang = angleAt(90, [[m('spin', -.2), 0, .9], [m('spin', 1.2), 400, m('same', 4) - m('spin', 1.2)]]);
+    const deg = lbl(p, '', 1250, 470, { size: 46, fill: ANG, font: MATH, o: 0 });
+    const vy = lbl(p, '', 1310, 226, { size: 44, fill: OPP, font: MATH, anchor: 'start', o: 0 }), vx = lbl(p, '', 1310, 346, { size: 44, fill: ADJ, font: MATH, anchor: 'start', o: 0 });
+    let last = '';
+    clockRun(t => {
+      const a = ang(t);
+      U.set(a);
+      const s = `${Math.round(a)}|${n2(Math.sin(a * DEG))}|${n2(Math.cos(a * DEG))}`;
+      if (s === last) return;
+      last = s;
+      deg.textContent = `α = ${Math.round(a)}°`;
+      vy.textContent = `= ${n2(Math.sin(a * DEG))}`;
+      vx.textContent = `= ${n2(Math.cos(a * DEG))}`;
+    }, D);
+    [deg, vy, vx].forEach((e, i) => show(e, m('spin', 1 + i * .1), .4));
+    show(mth(p, 'M(cos α; sin α)', 1250, 590, { size: 42 }), m('same', .4), .5);
+    const zero = G(p, { o: 0 });
+    for (const y of [UO[1] - UR, UO[1] + UR]) mk('circle', { cx: UO[0], cy: y, r: 22, fill: 'none', stroke: COL.bad, 'stroke-width': 4 }, zero);
+    T(zero, 'cos α = 0', { x: UO[0] - 34, y: UO[1] - UR - 14, size: 32, fill: COL.bad, weight: 600, anchor: 'end' });
+    M(zero, ['tg α нет при α = 90° + 180° · n'], { x: 1250, y: 690, size: 38, fill: COL.bad });
+    show(zero, m('zero'), .5);
+  }],
+  ['wrap', 'Итоги', (m, D) => {
+    const p = panel(0);
+    T(p, 'Итоги', { x: 200, y: 160, size: 56, weight: 600 });
+    [['В прямоугольном треугольнике sin, cos и tg — отношения сторон.', 'w1', OPP],
+      ['Они зависят только от угла, а не от размеров треугольника.', 'w2', ANG],
+      ['На единичной окружности cos α — абсцисса точки, sin α — ордината.', 'w3', HYP],
+      ['Так синус и косинус определены для любого угла.', 'w4', ADJ]].forEach(([str, mark, c], i) => {
+      const g = G(p, { x: -16, o: 0 }), y = 290 + i * 120;
+      mk('circle', { cx: 220, cy: y - 12, r: 28, fill: c }, g);
+      T(g, String(i + 1), { x: 220, y: y, size: 32, fill: COL.board, weight: 700, anchor: 'middle' });
+      T(g, str, { x: 276, y, size: 36, weight: 500 });
+      tw(g, { o: 1, x: 0 }, m(mark), .6);
+    });
+  }],
+  ['final1', 'Задачи по главе', () => { panel(0); }, { ask: done => quiz(SCREEN, PRACTICE, done, 'Задачи по главе') }],
+  ['finish', 'Конец главы', () => { panel(0); }, { ask: finishCard }],
+].map(([id, title, run, extra]) => ({ id, title, run, ...extra }));
+
+/* ---------- practice (used only inside the ask, so it may sit below BEATS) ---------- */
+const PRACTICE = [
+  { id: 'p-sin150', prompt: ['Найдите ', $m('sin 150°'), '.'],
+    build: blanks([{ parts: ['sin 150° = ', { box: '1/2' }],
+      why: 'sin 150° = sin(180° − 30°) = sin 30° = 1/2.',
+      hint: 'Угол 150° дополняет до 180° угол 30°. У таких углов синусы равны.' }]) },
+  { id: 'p-cos120', prompt: ['Каков знак ', $m('cos 120°'), '?'],
+    build: choice([['меньше нуля'], ['больше нуля'], ['равен нулю']], 0,
+      'Угол 120° тупой: точка на окружности левее оси y, её абсцисса отрицательна.',
+      [null, 'Косинус положителен у острого угла. У тупого угла точка левее оси y.', 'Косинус равен нулю только при 90° (и 270°).']) },
+  { id: 'p-side', prompt: ['Гипотенуза ', $m('AB = 12'), ', ', $m('sin α = 1/3'), '. Найдите противолежащий катет ', $m('BC'), '.'],
+    build: blanks([{ parts: ['BC = ', { box: '4' }],
+      why: 'BC = AB · sin α = 12 · 1/3 = 4.',
+      hint: 'Противолежащий катет равен гипотенузе, умноженной на синус.' }]) },
+];
+
+boot();
+</script>
+</body>
+</html>
