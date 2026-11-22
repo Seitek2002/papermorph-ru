@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Общая оперативная хирургия</title>
+<link rel="stylesheet" href="../lib/engine.css">
+<link rel="expect" href="#bar" blocking="render"><!-- hold the first frame until the player exists, so the page transition can run -->
+</head>
+<body>
+<script src="../lib/engine.js"></script>
+<script src="audio/ru/timings.js"></script>
+<script>
+'use strict';
+// <html lang> sets the interface text, language the audio folder: keep both, and the timings path above, in the book's language.
+const CHAPTER = { number: 1, title: 'Общая оперативная хирургия', minutes: 7, language: 'ru' };
+
+/* ---------- colours: one meaning each across the chapter (style.json look.meaning) ---------- */
+const SKIN = '#e9c09a', FAT = COL.int, APO = COL.whole, MUS = COL.rat, BLOOD = '#e0524a', THREAD = COL.irr, STEEL = '#cfd6d8', ORGAN = COL.real;
+const WOUND = '#3a2225';   // the inside of an open wound
+
+/* ---------- chapter drawing helpers ---------- */
+const lbl = (p, str, x, y, { size = 30, fill = COL.chalk, anchor = 'middle', weight = 500, o = 0 } = {}) => T(p, str, { x, y, size, fill, anchor, weight, o });
+const seg = (p, x1, y1, x2, y2, stroke = COL.chalk, w = 4, o = {}) => path(p, `M${x1} ${y1}L${x2} ${y2}`, { stroke, 'stroke-width': w }, o);
+function box(p, x, y, w, h, fill, { rx = 0, stroke = 'none', sw = 0, fo = 1 } = {}) {
+  return mk('rect', { x, y, width: w, height: h, rx, fill, 'fill-opacity': fo, stroke, 'stroke-width': sw }, p);
+}
+// A rounded label: an outline in its colour around the words.
+function pill(p, str, x, y, { fill = COL.chalk, size = 28, o = 0 } = {}) {
+  const g = G(p, { x, y, o }), w = uiW(str, size) + 40;
+  box(g, -w / 2, -size * 1.02, w, size * 1.45, 'none', { rx: size * .72, stroke: fill, sw: 2.5 });
+  T(g, str, { size, fill, anchor: 'middle', weight: 600 });
+  return g;
+}
+// An arrow from (x1, y1) to (x2, y2), hidden until shown.
+function arr(p, x1, y1, x2, y2, stroke = COL.dim, w = 3) {
+  const g = G(p, { o: 0 }), a = Math.atan2(y2 - y1, x2 - x1), h = 14;
+  path(g, `M${x1} ${y1}L${x2} ${y2}`, { stroke, 'stroke-width': w });
+  const pt = da => `${(x2 - h * Math.cos(a + da)).toFixed(1)} ${(y2 - h * Math.sin(a + da)).toFixed(1)}`;
+  path(g, `M${x2} ${y2}L${pt(-.45)}L${pt(.45)}Z`, { fill: stroke, stroke: 'none' });
+  return g;
+}
+// One line of explanation under the picture, shown from t0 and, if t1 is given, gone at t1.
+function say(p, str, t0, t1, { y = 690, fill = COL.chalk, size = 30 } = {}) {
+  const e = lbl(p, str, 800, y, { size, fill, weight: 600 });
+  show(e, t0, .4);
+  if (t1 !== undefined) hide(e, t1, .3);
+  return e;
+}
+
+// The soft tissues in a side view: skin, fat, aponeurosis and muscle between x0 and x1, with their names on the left.
+const LY = { top: 330, fat: 360, apo: 470, mus: 486, bottom: 600 };
+function layers(p, x0, x1, t0, { names = true } = {}) {
+  const g = G(p, { o: 0 }), w = x1 - x0;
+  box(g, x0, LY.top, w, LY.fat - LY.top, SKIN);
+  box(g, x0, LY.fat, w, LY.apo - LY.fat, FAT, { fo: .32 });
+  box(g, x0, LY.apo, w, LY.mus - LY.apo, APO);
+  box(g, x0, LY.mus, w, LY.bottom - LY.mus, MUS, { fo: .28 });
+  for (let y = LY.mus + 16; y < LY.bottom - 6; y += 18) seg(g, x0 + 6, y, x1 - 6, y, MUS, 2, { o: .7 });   // the muscle's fibres
+  if (names) [['кожа', 345, SKIN], ['клетчатка', 424, FAT], ['апоневроз', 487, APO], ['мышца', 552, MUS]]
+    .forEach(([s, y, c]) => T(g, s, { x: x0 - 16, y: y + 8, size: 24, fill: c, anchor: 'end', weight: 600 }));
+  show(g, t0, .6);
+  return g;
+}
+// A scalpel whose blade tip is at the group's origin: mv moves it, rot turns it about the tip (r 0: upright).
+function scalpel(p, x, y, { s = .8, r = 0, o = 0 } = {}) {
+  const mv = G(p, { x, y, s, o }), rot = G(mv, { r });
+  path(rot, 'M0 0C16 -26 22 -70 12 -112L-8 -112L-8 -14Z', { fill: STEEL, stroke: 'none' });   // the blade, its belly forward
+  box(rot, -10, -124, 20, 14, COL.dim, { rx: 3 });
+  box(rot, -10, -300, 20, 178, COL.dim, { rx: 9 });
+  return { mv, rot };
+}
+// A closed haemostatic clamp: the tips of its jaws at the origin, the rings above.
+function clamp(p, x, y, { s = 1, r = 0, o = 0, color = STEEL } = {}) {
+  const g = G(p, { x, y, s, r, o });
+  path(g, 'M-3 0L-6 -92L-42 -238', { stroke: color, 'stroke-width': 7 });
+  path(g, 'M3 0L6 -92L42 -238', { stroke: color, 'stroke-width': 7 });
+  mk('circle', { cx: -52, cy: -262, r: 24, fill: 'none', stroke: color, 'stroke-width': 6 }, g);
+  mk('circle', { cx: 52, cy: -262, r: 24, fill: 'none', stroke: color, 'stroke-width': 6 }, g);
+  mk('circle', { cx: 0, cy: -92, r: 7, fill: color }, g);
+  return g;
+}
+// Drops of blood running from (x, y) down and to the right until the clock reaches `until`.
+function bleed(p, x, y, until, D) {
+  const drops = [0, 1, 2, 3].map(() => mk('circle', { r: 8, fill: BLOOD, opacity: 0 }, p));
+  clockRun(t => drops.forEach((c, k) => {
+    const q = (t * 1.2 + k / 4) % 1, on = t < until;
+    c.setAttribute('cx', (x + 10 + q * 46).toFixed(1));
+    c.setAttribute('cy', (y + 8 + q * 64 + q * q * 30).toFixed(1));
+    c.setAttribute('opacity', on ? (1 - q).toFixed(2) : 0);
+  }), D);
+}
+
+/* ---------- beats: [id, title, run(m, D), { ask }?] ---------- */
+const BEATS = [
+  ['intro', 'Общая оперативная хирургия', (m, D) => {
+    const g = G(scene, { o: 0, y: 24 });
+    S.panel = g;
+    T(g, 'Кованов · Оперативная хирургия · Глава 8', { x: 800, y: 300, size: 30, fill: COL.dim, anchor: 'middle' });
+    T(g, 'Общая оперативная хирургия', { x: 800, y: 410, size: 80, weight: 600, anchor: 'middle' });
+    tw(g, { o: 1, y: 0 }, .2, 1.1, out);
+    const r = lbl(scene, 'операция, разъединение и соединение тканей', 800, 520, { size: 36, fill: COL.dim });
+    show(r, m('sub'));
+    const sc = scalpel(g, 700, 690, { s: .6, r: -70, o: 1 });
+    put(sc.mv, { o: 0 }); show(sc.mv, m('sub', .6), .5);
+    tw(sc.mv, { x: 900 }, m('sub', .8), 1.6, io);
+    draw(seg(g, 700, 690, 900, 690, BLOOD, 4, { d: 0 }), m('sub', .8), 1.6, io);
+    tw(g, { o: 0, y: -24 }, D - .9, .8); hide(r, D - .9, .8);
+  }],
+  ['operation', 'Что такое операция', (m, D) => {
+    const p = panel(0);
+    show(lbl(p, 'Хирургическая операция', 800, 140, { size: 30, fill: COL.dim }), .2);
+    const X0 = 430, X1 = 1170, XM = 800;
+    const half = (x0, x1) => {
+      const g = G(p, { o: 0 });
+      box(g, x0, 250, x1 - x0, 26, SKIN); box(g, x0, 276, x1 - x0, 80, FAT, { fo: .32 });
+      box(g, x0, 356, x1 - x0, 14, APO); box(g, x0, 370, x1 - x0, 80, MUS, { fo: .28 });
+      return g;
+    };
+    const L = half(X0, XM), R = half(XM, X1);
+    show(L, .3, .6); show(R, .3, .6);
+    const names = G(p, { o: 0 });
+    [['кожа', 270, SKIN], ['клетчатка', 322, FAT], ['апоневроз', 370, APO], ['мышца', 418, MUS]]
+      .forEach(([s, y, c]) => T(names, s, { x: X0 - 130, y, size: 24, fill: c, anchor: 'end', weight: 600 }));
+    show(names, .6, .5);
+    const organ = G(p, { x: XM, y: 530, o: 0 });   // drawn about its centre, so a pulse scales it in place
+    mk('ellipse', { rx: 210, ry: 56, fill: ORGAN, 'fill-opacity': .3, stroke: ORGAN, 'stroke-width': 3 }, organ);
+    show(organ, .5, .6);
+    const cut = seg(p, XM, 240, XM, 455, BLOOD, 4, { d: 0 });
+    draw(cut, m('cut'), .6); hide(cut, m('cut', 1.1), .3);
+    tw(L, { x: -120 }, m('cut', .9), 1, io); tw(R, { x: 120 }, m('cut', .9), 1, io);
+    show(lbl(p, 'больной орган', XM, 540, { size: 28, fill: COL.chalk, weight: 600 }), m('organ'), .4);
+    pulse(organ, m('organ', .2), 1.06);
+    const act = G(p, { x: XM + 165, y: 515, o: 0 });
+    mk('circle', { r: 22, fill: 'none', stroke: COL.task, 'stroke-width': 4 }, act);
+    show(act, m('act'), .3); pulse(act, m('act', .3), 1.4);
+    tw(L, { x: 0 }, m('join'), 1, io); tw(R, { x: 0 }, m('join'), 1, io);
+    draw(path(p, `M${XM - 30} 252Q${XM} 380 ${XM + 30} 252`, { stroke: THREAD, 'stroke-width': 5 }, { d: 0 }), m('join', 1), .6);
+    // the four steps under the picture
+    const steps = [['разъединить ткани', 'cut', COL.chalk], ['обнажить орган', 'organ', ORGAN], ['лечение или диагностика', 'act', COL.task], ['соединить ткани', 'join', THREAD]];
+    const ws = steps.map(([s]) => uiW(s, 26) + 40), gap = 56, total = ws.reduce((a, b) => a + b) + gap * 3;
+    let x = 800 - total / 2;
+    steps.forEach(([s, mark, c], i) => {
+      const cx = x + ws[i] / 2;
+      show(pill(p, s, cx, 680, { fill: c, size: 26 }), m(mark), .4);
+      if (i) show(arr(p, x - gap + 10, 671, x - 10, 671), m(mark), .3);
+      x += ws[i] + gap;
+    });
+    show(lbl(p, 'Оперативная хирургия — учение о способах и правилах операций', 800, 205, { size: 32, fill: COL.task, weight: 600 }), m('subject'), .5);
+  }],
+  ['stages', 'Три этапа', (m, D) => {
+    const p = panel(0);
+    show(lbl(p, 'Три этапа операции', 800, 150, { size: 32, fill: COL.dim }), .2);
+    [['access', '1', 'Оперативный доступ', ['обнажает орган'], APO],
+     ['main', '2', 'Оперативный приём', ['главный этап:', 'вскрыть гнойник,', 'удалить поражённый орган'], COL.task],
+     ['close', '3', 'Завершение', ['восстановить ткани,', 'осушить рану, дренаж,', 'послойно ушить рану'], THREAD]].forEach(([mark, n, title, lines, c], i) => {
+      const x = 300 + i * 500, g = G(p, { y: 20, o: 0 });
+      box(g, x - 210, 240, 420, 380, 'none', { rx: 24, stroke: c, sw: 3 });
+      mk('circle', { cx: x, cy: 305, r: 32, fill: c }, g);
+      T(g, n, { x, y: 317, size: 34, fill: COL.board, weight: 700, anchor: 'middle' });
+      T(g, title, { x, y: 400, size: 32, fill: c, weight: 600, anchor: 'middle' });
+      lines.forEach((s, k) => T(g, s, { x, y: 462 + k * 44, size: 27, anchor: 'middle' }));
+      tw(g, { o: 1, y: 0 }, m(mark), .6, out);
+      if (i) show(arr(p, x - 280, 430, x - 220, 430), m(mark), .4);
+    });
+  }],
+  ['access', 'Доступ', (m, D) => {
+    const p = panel(0);
+    // left: a wide access straight above the focus
+    const g = G(p, { o: 0 }), X0 = 140, X1 = 740, F = [470, 452];
+    box(g, X0, 220, X1 - X0, 20, SKIN); box(g, X0, 240, X1 - X0, 70, FAT, { fo: .32 }); box(g, X0, 310, X1 - X0, 70, MUS, { fo: .28 });
+    mk('ellipse', { cx: 440, cy: 450, rx: 170, ry: 48, fill: ORGAN, 'fill-opacity': .3, stroke: ORGAN, 'stroke-width': 3 }, g);
+    mk('circle', { cx: F[0], cy: F[1], r: 13, fill: BLOOD }, g);
+    T(g, 'очаг', { x: F[0] + 26, y: F[1] + 9, size: 24, fill: BLOOD, weight: 600 });
+    show(g, .2, .6);
+    const hole = path(p, '', { fill: WOUND, stroke: BLOOD, 'stroke-width': 2 });
+    const open = w => hole.setAttribute('d', `M${F[0] - w} 220L${F[0] - 10} 400L${F[0] + 10} 400L${F[0] + w} 220Z`);
+    open(0);
+    prog(q => open(14 * q), m('near'), .5);
+    prog(q => open(14 + 130 * q), m('wide'), 1.1, io);
+    const reqs = [['near', 'как можно ближе к очагу'], ['wide', 'достаточно широко'], ['gentle', 'малотравматично']];
+    reqs.forEach(([mark, s], i) => {
+      const r = G(p, { o: 0 });
+      T(r, '✓', { x: 210, y: 590 + i * 50, size: 32, fill: THREAD, weight: 700 });
+      T(r, s, { x: 250, y: 590 + i * 50, size: 30, weight: 600 });
+      show(r, m(mark), .4);
+    });
+    // right: laparoscopy through three or four cuts of 1 cm
+    const lap = G(p, { o: 0 });
+    box(lap, 960, 200, 460, 330, 'none', { rx: 130, stroke: SKIN, sw: 4 });
+    [[1060, 300], [1320, 300], [1190, 440], [1090, 450]].forEach(([x, y]) => seg(lap, x - 12, y, x + 12, y, BLOOD, 5));
+    path(lap, 'M1320 300L1480 170', { stroke: STEEL, 'stroke-width': 8 });
+    T(lap, 'лапароскопия:', { x: 1190, y: 600, size: 30, weight: 600, anchor: 'middle' });
+    T(lap, '3–4 разреза по 1 см', { x: 1190, y: 645, size: 30, fill: COL.task, weight: 600, anchor: 'middle' });
+    show(lap, m('mini'), .6);
+    say(p, 'Начинающим — широкий доступ: хороший обзор, меньше ошибок', m('novice'), undefined, { y: 750, fill: COL.task });
+  }],
+  ['names', 'Названия операций', (m, D) => {
+    const p = panel(0);
+    show(lbl(p, 'орган + действие = название операции', 800, 150, { size: 30, fill: COL.dim }), .2);
+    [['tomy', 'гастро', 'томия', 'желудок', 'рассечение органа, вскрытие просвета', APO],
+     ['ectomy', 'аппенд', 'эктомия', 'аппендикс', 'удаление органа', COL.task],
+     ['stomy', 'трахео', 'стомия', 'трахея', 'свищ: сообщение с внешней средой', THREAD]].forEach(([mark, root, suf, gloss, mean, c], i) => {
+      const y = 270 + i * 125, X = 520, size = 52;
+      const rt = T(p, root, { x: X, y, size, weight: 600, anchor: 'end', o: 0 });
+      const gl = lbl(p, gloss, X - uiW(root, size) / 2, y + 36, { size: 22, fill: COL.dim });
+      const sf = T(p, suf, { x: X + 90, y, size, fill: c, weight: 600, o: 0 });
+      show(rt, m(mark), .4); show(gl, m(mark, .2), .4);
+      show(sf, m(mark, .5), .3); tw(sf, { x: X }, m(mark, .5), .6, io);
+      show(lbl(p, '— ' + mean, 900, y, { size: 30, fill: c, anchor: 'start', weight: 600 }), m(mark, 1.2), .4);
+    });
+    [['пункция — прокол', 640], ['биопсия — иссечение кусочка ткани для исследования', 690], ['резекция — удаление части органа', 740]]
+      .forEach(([s, y], i) => show(lbl(p, s, 800, y, { size: 28, fill: COL.dim }), m('other', i * 1.6), .4));
+  }],
+  ['kinds', 'Виды операций', (m, D) => {
+    const p = panel(0);
+    show(lbl(p, 'по цели', 400, 170, { size: 30, fill: COL.dim }), .2);
+    show(lbl(p, 'по срокам', 1190, 170, { size: 30, fill: COL.dim }), .2);
+    const node = (s, x, y, c, t0, notes = []) => {
+      const g = G(p, { o: 0 });
+      T(g, s, { x, y, size: 30, fill: c, weight: 600, anchor: 'middle' });
+      notes.forEach((n, k) => T(g, n, { x, y: y + 36 + k * 30, size: 23, fill: COL.dim, anchor: 'middle' }));
+      show(g, t0, .5);
+    };
+    const ln = (x1, y1, x2, y2, t0) => draw(seg(p, x1, y1, x2, y2, COL.faint, 3, { d: 0 }), t0, .4);
+    ln(400, 188, 280, 262, m('aim')); node('лечебные', 260, 300, COL.task, m('aim'));
+    ln(400, 188, 540, 262, m('aim', 1.4)); node('диагностические', 560, 300, APO, m('aim', 1.4), ['уточняют диагноз']);
+    ln(240, 316, 170, 410, m('radical')); node('радикальные', 150, 450, COL.task, m('radical'), ['очаг удаляют', 'полностью']);
+    ln(280, 316, 370, 410, m('radical', 2)); node('паллиативные', 390, 450, COL.task, m('radical', 2), ['облегчают', 'состояние']);
+    draw(seg(p, 880, 420, 1490, 420, COL.dim, 3, { d: 0 }), m('time'), .6);
+    show(arr(p, 1470, 420, 1500, 420), m('time', .5), .3);
+    [['time', 920, 'экстренные', ['немедленно'], BLOOD], ['urgent', 1170, 'срочные', ['отложены', 'ненадолго'], COL.task],
+     ['planned', 1410, 'плановые', ['после полного', 'обследования'], THREAD]].forEach(([mark, x, s, notes, c]) => {
+      const g = G(p, { o: 0 });
+      mk('circle', { cx: x, cy: 420, r: 11, fill: c }, g);
+      T(g, s, { x, y: 385, size: 30, fill: c, weight: 600, anchor: 'middle' });
+      notes.forEach((n, k) => T(g, n, { x, y: 470 + k * 32, size: 24, fill: COL.dim, anchor: 'middle' }));
+      show(g, m(mark), .4);
+    });
+  }],
+  ['q1', 'Быстрая проверка', () => {
+    const p = panel(0);
+    show(lbl(p, 'желчный пузырь — по-гречески «холецист»', 800, 300, { size: 40, weight: 600 }), .2);
+    show(lbl(p, 'холецист + ?', 800, 420, { size: 52, fill: COL.task, weight: 600 }), .5);
+  }, { ask: done => quiz(BAND, [{
+    id: 'c-name', prompt: ['Как называется операция удаления желчного пузыря?'],
+    build: choice([['холецистэктомия'], ['холецистотомия'], ['холецистостомия']], 0,
+      'Эктомия — удаление органа: холецистэктомия.',
+      [null, 'Томия — рассечение органа, вскрытие его просвета, а не удаление.', 'Стомия — наложение свища, а не удаление.']),
+  }], done) }],
+  ['incision', 'Разрез кожи', (m, D) => {
+    const p = panel(0);
+    const A = 470, B = 1130, DEPTH = 400;
+    layers(p, 220, 1420, .2);
+    show(path(p, `M${A} ${LY.top - 3}H${B}`, { stroke: COL.task, 'stroke-width': 3, 'stroke-dasharray': '12 10' }, { o: 0 }), .9, .4);
+    // the first and second fingers hold the skin along the line of the cut
+    [A - 90, B + 90].forEach((x, i) => {
+      const f = G(p, { y: -60, o: 0 });
+      box(f, x - 26, 200, 52, 128, SKIN, { rx: 26, stroke: COL.board, sw: 3 });
+      tw(f, { y: 0, o: 1 }, m('fix', i * .3), .6, out);
+    });
+    say(p, 'кожу фиксируют I и II пальцами', m('fix'), m('fat'), { y: 660 });
+    const sc = scalpel(p, A, LY.top - 70);
+    show(sc.mv, .6, .4);
+    tw(sc.mv, { y: DEPTH }, m('in'), .8, io);
+    draw(seg(p, A, LY.top, A, DEPTH, BLOOD, 5, { d: 0 }), m('in', .1), .7);
+    show(lbl(p, 'вкол перпендикулярно', A, 720, { size: 26, fill: COL.task, weight: 600 }), m('in', .3), .4);
+    tw(sc.rot, { r: -45 }, m('tilt'), .7, io);
+    // the 45° between blade and skin, at the point where the tilted blade crosses the skin; it travels with the tip
+    const ang = G(p, { x: A, y: DEPTH, o: 0 }), up = LY.top - DEPTH;
+    path(ang, `M-122 ${up}A52 52 0 0 1 ${(-70 - 36.8).toFixed(1)} ${(up - 36.8).toFixed(1)}`, { stroke: COL.task, 'stroke-width': 3 });
+    T(ang, '45°', { x: -132, y: up - 24, size: 30, fill: COL.task, weight: 700, anchor: 'end' });
+    show(ang, m('tilt', .5), .4); hide(ang, m('out'), .3);
+    const go = Math.max(1, m('out') - m('go') - .2);
+    tw(sc.mv, { x: B }, m('go'), go, lin); tw(ang, { x: B }, m('go'), go, lin);
+    draw(seg(p, A, DEPTH, B, DEPTH, BLOOD, 5, { d: 0 }), m('go'), go, lin);
+    tw(sc.rot, { r: 0 }, m('out'), .5, io); tw(sc.mv, { y: LY.top - 70 }, m('out', .4), .7, io);
+    draw(seg(p, B, DEPTH, B, LY.top, BLOOD, 5, { d: 0 }), m('out', .4), .6);
+    show(lbl(p, 'выкол перпендикулярно', B, 720, { size: 26, fill: COL.task, weight: 600 }), m('out', .3), .4);
+    const cutZone = G(p, { o: 0 });   // a tint over what was cut, under the red cut lines' colour
+    box(cutZone, A, LY.top, B - A, DEPTH - LY.top, COL.task, { fo: .22 });
+    show(cutZone, m('fat'), .4);
+    say(p, 'разрезаны кожа и поверхностный слой клетчатки', m('fat', .2), undefined, { y: 660, fill: COL.task });
+  }],
+  ['deeper', 'Апоневроз и мышцы', (m, D) => {
+    const p = panel(0);
+    const A = 470, B = 1130;
+    layers(p, 220, 1420, .1);
+    const trough = G(p, { o: 0 });   // the cut through skin and fat, opened
+    box(trough, A, LY.top, B - A, LY.apo - LY.top, WOUND);
+    seg(trough, A, LY.top, A, LY.apo, BLOOD, 4); seg(trough, B, LY.top, B, LY.apo, BLOOD, 4);
+    show(trough, .4, .6);
+    draw(seg(p, A + 20, LY.apo + 7, A + 100, LY.apo + 7, BLOOD, 5, { d: 0 }), m('small'), .5);
+    say(p, 'небольшой надрез', m('small'), m('probe'));
+    const probe = G(p, { x: -260, o: 0 });
+    box(probe, A + 30, LY.mus + 2, B - A - 30, 14, STEEL, { rx: 7 });
+    seg(probe, A + 50, LY.mus + 9, B - 20, LY.mus + 9, COL.dim, 2);   // its groove
+    show(probe, m('probe'), .3); tw(probe, { x: 0 }, m('probe'), 1.4, out);
+    say(p, 'под апоневроз вводят желобоватый зонд', m('probe', .3), m('cut'));
+    const sc = scalpel(p, A + 40, LY.apo + 4, { s: .55, r: -40 });
+    show(sc.mv, m('cut'), .3);
+    tw(sc.mv, { x: B - 30 }, m('cut', .3), 2.4, io);
+    draw(seg(p, A + 40, LY.apo + 7, B - 30, LY.apo + 7, BLOOD, 5, { d: 0 }), m('cut', .3), 2.4, io);
+    hide(sc.mv, m('cut', 2.9), .3); hide(probe, m('muscle'), .4);
+    say(p, 'апоневроз рассекают по зонду', m('cut', .3), m('muscle'));
+    const slit = mk('ellipse', { cx: 800, cy: 544, rx: 0, ry: 0, fill: WOUND, stroke: MUS, 'stroke-width': 3 }, p);
+    prog(q => { slit.setAttribute('rx', (220 * q).toFixed(1)); slit.setAttribute('ry', (24 * q).toFixed(1)); }, m('muscle', .4), 1.4, io);
+    const spread = G(p, { o: 0 });
+    path(spread, 'M800 528V504M790 514l10 -12l10 12', { stroke: COL.chalk, 'stroke-width': 3 });
+    path(spread, 'M800 560V584M790 574l10 12l10 -12', { stroke: COL.chalk, 'stroke-width': 3 });
+    show(spread, m('muscle', 1), .4);
+    say(p, 'мышцы расслаивают тупым путём по ходу волокон', m('muscle', .3), undefined, { fill: MUS });
+  }],
+  ['bleeding', 'Остановка кровотечения', (m, D) => {
+    const p = panel(0);
+    const E = [530, 420];   // the bleeding end of the cut vessel
+    mk('ellipse', { cx: 560, cy: 430, rx: 300, ry: 150, fill: WOUND, stroke: SKIN, 'stroke-width': 6 }, G(p));
+    path(p, `M170 328L${E[0]} ${E[1]}`, { stroke: BLOOD, 'stroke-width': 20 });
+    path(p, 'M600 440L930 528', { stroke: BLOOD, 'stroke-width': 20 });
+    T(p, 'сосуд', { x: 170, y: 300, size: 26, fill: BLOOD, weight: 600, anchor: 'middle' });
+    bleed(p, ...E, m('temp', .5), D);
+    const tampon = G(p, { x: E[0], y: E[1], s: 0, o: 0 });
+    box(tampon, -38, -38, 76, 76, COL.chalk, { rx: 10, fo: .9 });
+    pop(tampon, m('temp')); hide(tampon, m('clamp', .5), .4);
+    say(p, 'временно: прижать тампоном или пальцем', m('temp'), m('clamp'));
+    const cl = clamp(p, E[0] + 4, E[1] - 2, { s: .8, r: 35 });
+    put(cl, { x: E[0] + 160, y: E[1] - 170 });
+    show(cl, m('clamp'), .3); tw(cl, { x: E[0] + 4, y: E[1] - 2 }, m('clamp'), .9, out);
+    say(p, 'чаще — кровоостанавливающий зажим', m('clamp', .2), m('limb'));
+    // a limb with a tourniquet above the wound
+    const limb = G(p, { o: 0 });
+    box(limb, 1000, 230, 500, 110, 'none', { rx: 55, stroke: SKIN, sw: 4 });
+    path(limb, 'M1395 265L1425 305M1425 265L1395 305', { stroke: BLOOD, 'stroke-width': 5 });
+    T(limb, '← к туловищу', { x: 1010, y: 385, size: 22, fill: COL.dim });
+    show(limb, m('limb'), .5);
+    const band = G(p, { o: 0 });
+    box(band, 1215, 220, 34, 130, '#c46b3c', { rx: 8 });
+    T(band, 'жгут', { x: 1232, y: 205, size: 26, fill: '#e8935e', weight: 600, anchor: 'middle' });
+    show(band, m('limb', .8), .4);
+    show(lbl(p, 'выше места повреждения', 1250, 430, { size: 26, fill: COL.chalk, weight: 600 }), m('limb', 1.2), .4);
+    say(p, 'окончательно: перевязка сосуда лигатурой', m('final'), undefined, { fill: THREAD });
+    pulse(cl, m('final', .2), 1.05);
+    const ring = mk('ellipse', { cx: E[0] - 34, cy: E[1] - 9, rx: 9, ry: 30, fill: 'none', stroke: THREAD, 'stroke-width': 5, transform: `rotate(-14 ${E[0] - 34} ${E[1] - 9})` }, p);
+    put(ring, { o: 0 });
+    show(ring, m('tie'), .3); tw(ring, { a_ry: 12 }, m('tie', .6), .6, io);
+    const tails = path(p, `M${E[0] - 30} ${E[1] - 18}l18 -26M${E[0] - 30} ${E[1] - 18}l28 -12`, { stroke: THREAD, 'stroke-width': 4 }, { o: 0 });
+    show(tails, m('tie', 1.1), .3);
+    tw(cl, { x: E[0] + 200, y: E[1] - 220, o: 0 }, m('tie', 1.8), .8, io);
+    [['прошивание тканей', 380], ['электронож', 800], ['сосудистый шов', 1220]]
+      .forEach(([s, x], i) => show(pill(p, s, x, 760, { fill: COL.dim, size: 26 }), m('other', i * 1.2), .4));
+  }],
+  ['q2', 'Быстрая проверка', (m, D) => {
+    const p = panel(0);
+    mk('ellipse', { cx: 800, cy: 330, rx: 260, ry: 120, fill: WOUND, stroke: SKIN, 'stroke-width': 6 }, G(p));
+    path(p, 'M560 280L770 330', { stroke: BLOOD, 'stroke-width': 20 });
+    bleed(p, 770, 330, 999, D);
+  }, { ask: done => quiz(BAND, [{
+    id: 'c-bleed', prompt: ['Какой способ останавливает кровотечение окончательно?'],
+    build: choice([['перевязка сосуда лигатурой'], ['резиновый жгут'], ['прижатие тампоном']], 0,
+      'Перевязка лигатурой — обычный способ окончательной остановки кровотечения.',
+      [null, 'Жгут останавливает кровотечение на конечности только временно.', 'Прижатие тампоном или пальцем — временная остановка.']),
+  }], done) }],
+  ['suture', 'Узловой шов', (m, D) => {
+    const p = panel(0);
+    show(pill(p, 'шёлк, капрон — не рассасываются', 470, 170, { size: 26 }), m('thread'), .4);
+    show(pill(p, 'кетгут, викрил — рассасываются за 8–24 дня', 1110, 170, { fill: THREAD, size: 26 }), m('thread', 1.6), .4);
+    const W = G(p, { o: 0 });   // the wound in the skin, seen from above
+    box(W, 360, 280, 1100, 360, SKIN, { rx: 18, fo: .22 });
+    const gap = box(W, 380, 450, 1060, 20, WOUND, { rx: 6 });
+    show(W, .3, .6);
+    const moments = [['in', 'вкол'], ['out', 'выкол'], ['pull', 'протягивание'], ['tie', 'завязывание']];
+    moments.forEach(([mark, s], i) => {   // listed dim, each lit as its moment comes
+      const g = G(p, { o: 0 }), y = 340 + i * 60;
+      T(g, `${i + 1}`, { x: 120, y, size: 28, fill: COL.dim, weight: 700 });
+      T(g, s, { x: 150, y, size: 28, fill: COL.dim, weight: 600 });
+      show(g, m('stitch', .5), .4);
+      show(lbl(p, s, 150, y, { size: 28, fill: COL.task, anchor: 'start', weight: 600 }), m(mark), .3);
+    });
+    const XS = [520, 670, 820, 970, 1120, 1270], IN = 340, OUT = 580;
+    const stitch = (x, t0, quick) => {
+      const a = G(p, { s: 0, o: 0, x, y: IN }); mk('circle', { r: 8, fill: COL.task }, a);
+      const b = G(p, { s: 0, o: 0, x, y: OUT }); mk('circle', { r: 8, fill: COL.task }, b);
+      const th = seg(p, x, IN, x, OUT, THREAD, 5, { d: 0 });
+      const knot = G(p, { x, y: IN, s: 0, o: 0 });
+      mk('circle', { r: 11, fill: 'none', stroke: THREAD, 'stroke-width': 4 }, knot);
+      path(knot, 'M6 -8l16 -18M8 -4l24 -6', { stroke: THREAD, 'stroke-width': 4 });
+      const T4 = quick ? [t0, t0 + .1, t0 + .2, t0 + .35] : [m('in'), m('out'), m('pull'), m('tie')];
+      pop(a, T4[0]); pop(b, T4[1]); draw(th, T4[2], quick ? .2 : .6); pop(knot, T4[3]);
+      return knot;
+    };
+    const knots = [stitch(XS[0], 0, false)];
+    const dimV = G(p, { o: 0 });
+    path(dimV, `M470 ${IN}V450M460 ${IN}h20M460 450h20`, { stroke: COL.task, 'stroke-width': 2.5 });
+    T(dimV, '1–1,5 см', { x: 455, y: 405, size: 24, fill: COL.task, weight: 600, anchor: 'end' });
+    show(dimV, m('in', .3), .4); hide(dimV, m('next'), .3);
+    XS.slice(1).forEach((x, k) => knots.push(stitch(x, m('next', .3 + k * .45), true)));
+    const dimH = G(p, { o: 0 });
+    path(dimH, `M520 612H670M520 602v20M670 602v20`, { stroke: COL.task, 'stroke-width': 2.5 });
+    T(dimH, '1,5 см', { x: 595, y: 600, size: 24, fill: COL.task, weight: 600, anchor: 'middle' });
+    show(dimH, m('next', 1), .4);
+    tw(gap, { a_height: 3, a_y: 458 }, m('next', 2.6), 1, io);
+    show(lbl(p, 'узел — сбоку от линии раны', 990, 250, { size: 26, fill: COL.task, weight: 600 }), m('side'), .4);
+    knots.forEach((k, i) => pulse(k, m('side', .2 + i * .08), 1.35));
+    // two other kinds of suture
+    const kinds = G(p, { o: 0 });
+    path(kinds, 'M560 700l30 30l30 -30l30 30l30 -30l30 30', { stroke: THREAD, 'stroke-width': 4 });
+    T(kinds, 'непрерывный', { x: 760, y: 728, size: 26, weight: 600 });
+    path(kinds, 'M1010 700v34h28v-34M1066 700v34h28v-34', { stroke: THREAD, 'stroke-width': 4 });
+    T(kinds, 'матрацный', { x: 1120, y: 728, size: 26, weight: 600 });
+    show(kinds, m('kinds', .3), .5);
+  }],
+  ['instruments', 'Инструменты', (m, D) => {
+    const p = panel(0);
+    const col = (mark, x, titles, examples, c, icon) => {
+      const g = G(p, { y: 20, o: 0 });
+      icon(g, x);
+      titles.forEach((s, k) => T(g, s, { x, y: 440 + k * 34, size: 27, fill: c, weight: 600, anchor: 'middle' }));
+      examples.forEach((s, k) => T(g, s, { x, y: 528 + k * 30, size: 23, fill: COL.dim, anchor: 'middle' }));
+      tw(g, { o: 1, y: 0 }, m(mark), .5, out);
+    };
+    col('cut', 200, ['для разъединения', 'тканей'], ['скальпели,', 'ножницы, пилы'], COL.chalk, (g, x) => {
+      const s = scalpel(g, x, 380, { s: .78, o: 1 }); put(s.mv, { o: 1 });
+    });
+    col('stop', 500, ['для остановки', 'кровотечения'], ['зажимы Кохера,', 'Бильрота'], BLOOD, (g, x) => clamp(g, x, 380, { s: .78, o: 1 }));
+    col('hold', 800, ['фиксационные', ''], ['пинцеты, крючки,', 'ранорасширители'], APO, (g, x) => {
+      path(g, `M${x - 46} 380L${x - 58} 180Q${x - 40} 160 ${x - 22} 180L${x - 34} 380`, { stroke: STEEL, 'stroke-width': 6 });
+      path(g, `M${x + 50} 160V330Q${x + 50} 380 ${x + 10} 376Q${x - 10} 372 ${x - 6} 350`, { stroke: STEEL, 'stroke-width': 7 });
+    });
+    col('join', 1100, ['для соединения', 'тканей'], ['иглодержатели,', 'иглы'], THREAD, (g, x) => {
+      clamp(g, x - 30, 380, { s: .62, o: 1 });
+      path(g, `M${x + 20} 300A44 44 0 0 1 ${x + 100} 300`, { stroke: STEEL, 'stroke-width': 5 });
+      path(g, `M${x + 20} 300Q${x + 10} 350 ${x + 50} 370`, { stroke: THREAD, 'stroke-width': 3 });
+    });
+    col('special', 1400, ['специального', 'назначения'], ['нейрохирургия,', 'офтальмология'], COL.task, (g, x) => {
+      path(g, `M${x - 70} 280Q${x} 220 ${x + 70} 280Q${x} 340 ${x - 70} 280Z`, { stroke: COL.chalk, 'stroke-width': 4 });
+      mk('circle', { cx: x, cy: 280, r: 22, fill: COL.task }, g);
+    });
+    [['как смычок', 470, COL.dim], ['как столовый нож', 800, COL.dim], ['как писчее перо', 1140, COL.task]]
+      .forEach(([s, x, c], i) => show(pill(p, s, x, 670, { fill: c, size: 26 }), m('pen', .4 + i * .2), .4));
+    show(lbl(p, 'для точных движений: длина и глубина разреза под контролем', 800, 745, { size: 26, fill: COL.task, weight: 600 }), m('pen', 1.6), .4);
+  }],
+  ['wrap', 'Итоги', (m, D) => {
+    const p = panel(0);
+    T(p, 'Итоги', { x: 200, y: 160, size: 56, weight: 600 });
+    [['Операция: доступ, оперативный приём, завершение.', 'w1', APO],
+     ['Название: орган + действие (томия, эктомия, стомия).', 'w2', COL.task],
+     ['Кожа: вкол и выкол перпендикулярно, разрез под углом 45°.', 'w3', SKIN],
+     ['Кровотечение: временная и окончательная остановка; на кожу — узловые швы.', 'w4', THREAD]].forEach(([str, mark, c], i) => {
+      const g = G(p, { x: -16, o: 0 }), y = 290 + i * 115;
+      mk('circle', { cx: 220, cy: y - 11, r: 28, fill: c }, g);
+      T(g, String(i + 1), { x: 220, y: y, size: 32, fill: COL.board, weight: 700, anchor: 'middle' });
+      T(g, str, { x: 276, y, size: 32, weight: 500 });
+      tw(g, { o: 1, x: 0 }, m(mark), .6);
+    });
+  }],
+  ['final1', 'Задачи по главе', () => { panel(0); }, { ask: done => quiz(SCREEN, PRACTICE, done, 'Задачи по главе') }],
+  ['finish', 'Конец урока', () => { panel(0); }, { ask: finishCard }],
+].map(([id, title, run, extra]) => ({ id, title, run, ...extra }));
+
+/* ---------- practice (used only inside the ask, so it may sit below BEATS) ---------- */
+const PRACTICE = [
+  { id: 'p-names', prompt: ['Что означает каждое название?'],
+    build: grid([
+      { parts: ['Гастротомия'], ans: ['t'], why: 'Томия — рассечение органа, вскрытие его просвета.' },
+      { parts: ['Аппендэктомия'], ans: ['e'], why: 'Эктомия — удаление органа.' },
+      { parts: ['Трахеостомия'], ans: ['s'], why: 'Стомия — сообщение полости органа с внешней средой, свищ.' },
+    ], [['t', 'рассечение'], ['e', 'удаление'], ['s', 'свищ']], { multi: false, text: true }) },
+  { id: 'p-angle', prompt: ['Под каким углом наклоняют скальпель после вкола?'],
+    build: blanks([{ parts: ['угол ', { box: '45' }, ' градусов'],
+      why: 'Вкол и выкол делают перпендикулярно коже, а сам разрез ведут под углом 45°.',
+      hint: 'Вкол — под прямым углом. Наклон — половина прямого угла.' }]) },
+  { id: 'p-gap', prompt: ['На каком расстоянии друг от друга накладывают узловые швы на кожу?'],
+    build: blanks([{ parts: [{ box: '1,5' }, ' сантиметра'],
+      why: 'Узловые швы на кожу ставят в 1,5 см друг от друга.',
+      hint: 'Больше одного сантиметра, но меньше двух.' }]) },
+  { id: 'p-kocher', prompt: ['Зажим Кохера — инструмент для…'],
+    build: choice([['остановки кровотечения'], ['разъединения тканей'], ['соединения тканей']], 0,
+      'Кровоостанавливающие зажимы (Кохера, Бильрота) — группа для остановки кровотечения.',
+      [null, 'Для разъединения тканей — скальпели, ножницы, пилы.', 'Для соединения тканей — иглодержатели и иглы.']) },
+];
+
+boot();
+</script>
+</body>
+</html>

@@ -40,6 +40,7 @@ h1 { font: 600 clamp(28px, 4.4vw, 46px)/1.15 var(--font-display); margin: 0; tex
 .body { padding: 22px 24px 24px; display: grid; gap: 12px; align-content: start; }
 .subject { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; margin: 0; }
 .lesson.maths .subject { color: var(--sky); }
+.lesson.surgery .subject { color: #e8a0c8; }
 h2 { font: 600 22px/1.25 var(--font-display); margin: 0; text-wrap: balance; }
 .source { margin: 0; color: var(--dim); font-size: 15px; }
 .facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
@@ -61,7 +62,6 @@ footer { color: var(--dim); font-size: 14px; border-top: 1px solid var(--edge); 
 footer p { margin: 0; }
 @media (prefers-reduced-motion: no-preference) { .btn { transition: filter .15s; } }
 body { margin: 0; }
-.lessons { max-width: 640px; }
 footer a { color: var(--chalk); }
 </style>
 </head>
@@ -88,6 +88,19 @@ footer a { color: var(--chalk); }
         </div>
       </div>
     </article>
+    <article class="lesson surgery">
+      <img src="img/surgery.jpg" alt="Слайд урока: разрез кожи скальпелем под углом 45° через кожу и клетчатку" width="960" height="540">
+      <div class="body">
+        <p class="subject">Медицина</p>
+        <h2>Общая оперативная хирургия</h2>
+        <p class="source">Учебник В. В. Кованова, глава 8, 4 страницы</p>
+        <ul class="facts"><li>16 слайдов</li><li>≈ 7 минут</li><li>2 проверки и 4 задачи</li></ul>
+        <div class="acts">
+          <a class="btn go" href="kovanov-ru/ch01/index.html">Смотреть урок</a>
+          <a class="btn quiet" href="kovanov-ru/index.html">Обложка книги</a>
+        </div>
+      </div>
+    </article>
   </section>
 
   <section class="how" aria-labelledby="howTitle">
@@ -101,7 +114,8 @@ footer a { color: var(--chalk); }
   </section>
 
   <footer>
-    <p>По материалу «<a href="https://ru.wikibooks.org/w/index.php?oldid=269655" target="_blank" rel="noopener">Тригонометрические функции</a>» из русского Викиучебника (версия 269655, <a href="https://ru.wikibooks.org/w/index.php?curid=31015&amp;action=history" target="_blank" rel="noopener">авторы</a>). Материал изменён: сокращён, пересказан для школьников, добавлены схемы, анимация, озвучка и задачи. Урок распространяется по лицензии <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</p>
+    <p>«Синус, косинус и тангенс»: по материалу «<a href="https://ru.wikibooks.org/w/index.php?oldid=269655" target="_blank" rel="noopener">Тригонометрические функции</a>» из русского Викиучебника (версия 269655, <a href="https://ru.wikibooks.org/w/index.php?curid=31015&amp;action=history" target="_blank" rel="noopener">авторы</a>). Материал изменён: сокращён, пересказан для школьников, добавлены схемы, анимация, озвучка и задачи. Урок распространяется по лицензии <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</p>
+    <p>«Общая оперативная хирургия»: учебный пересказ начала главы 8 (с. 215–218; авторы главы А. А. Травин, И. С. Дмитриева, А. В. Николаев) из учебника «Оперативная хирургия и топографическая анатомия» под ред. В. В. Кованова, 4-е изд., М.: Медицина, 2001. © Коллектив авторов, 2001. CC BY-SA и MIT на этот урок не распространяются. Это учебный прототип: медицинскую точность специалист не проверял, для клинических решений он не предназначен.</p>
     <p>Плеер: <a href="https://github.com/DozenTwelve/Papermorph" target="_blank" rel="noopener">Papermorph</a> с доработками, лицензия <a href="LICENSE.txt">MIT</a>. Голос синтезирован Edge TTS. На телефоне удобнее смотреть горизонтально.</p>
   </footer>
 </div>

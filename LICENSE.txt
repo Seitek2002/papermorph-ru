@@ -2,6 +2,10 @@ Player code (trigonometry-ru/lib): Papermorph, https://github.com/DozenTwelve/Pa
 Lesson text, drawings and audio (trigonometry-ru): CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/deed.ru
 Adapted from https://ru.wikibooks.org/w/index.php?oldid=269655
 
+Surgery lesson (kovanov-ru, outside lib): based on "Оперативная хирургия и топографическая анатомия", ed. V. V. Kovanov,
+4th ed., Moscow: Meditsina, 2001, (c) Коллектив авторов, 2001. All rights reserved: neither CC BY-SA nor MIT covers it.
+Player code in kovanov-ru/lib is MIT, as below.
+
 MIT License
 
 Copyright (c) 2026 TedKaczynski
