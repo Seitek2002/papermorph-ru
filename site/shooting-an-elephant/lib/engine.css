@@ -189,7 +189,8 @@ kbd { display: inline-block; min-width: 1.5em; padding: 0 .4em; margin-inline-st
 .help dd { margin: 0; color: var(--dim); }
 .help-close { margin: 26px 0 0; font-size: 18px; color: var(--dim); }
 .icon.txt { font-size: 20px; font-weight: 700; color: var(--dim); }
-/* Optional captions of the narration, one sentence at a time. Off by default: teaching text lives in the picture. */
+/* Optional captions of the narration, one sentence at a time. Off by default (teaching text lives in the picture) unless
+   the book's lib/book.css sets --captions: on; the reader's own choice, once made, is remembered either way. */
 .caption { position: absolute; left: 50%; bottom: 78px; transform: translateX(-50%); width: max-content; max-width: min(1180px, calc(var(--sw, 1600px) - 80px)); padding: 10px 24px; border-radius: 14px; background: color-mix(in srgb, var(--veil) 82%, transparent); color: var(--chalk); font-size: 28px; line-height: 1.35; text-align: center; pointer-events: none; }
 .caption[hidden] { display: none; }
 .icon.cc { font-size: 15px; font-weight: 700; color: var(--dim); }
